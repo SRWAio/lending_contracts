@@ -2,6 +2,17 @@ use scrypto::prelude::*;
 
 #[blueprint]
 mod pool {
+    enable_method_auth! {
+        roles {
+            admin => updatable_by: [];
+        },
+        methods {
+
+            take => restrict_to :[admin];
+            put => restrict_to :[admin];
+        }
+    }
+
     struct Pool {
         // The liquidity pool
         liquidity_pool: Vault,
@@ -11,13 +22,17 @@ mod pool {
     }
 
     impl Pool {
-        // Implement the functions and methods which will manage those resources and data
-
         // This is a function, and can be called directly on the blueprint once deployed
-        pub fn instantiate(resource_address: ResourceAddress) -> ComponentAddress {
+        pub fn instantiate(
+            admin_rule: AccessRule,
+            resource_address: ResourceAddress,
+        ) -> ComponentAddress {
             // Create a new token called "HelloToken," with a fixed supply of 1000, and put that supply into a bucket
             let (address_reservation, component_address) =
                 Runtime::allocate_component_address(Pool::blueprint_id());
+
+            let component_rule = rule!(require(global_caller(component_address)));
+
             // Instantiate a Hello component, populating its vault with our supply of 1000 HelloToken
             Self {
                 liquidity_pool: Vault::new(resource_address),
@@ -27,6 +42,9 @@ mod pool {
             }
             .instantiate()
             .prepare_to_globalize(OwnerRole::None)
+            .roles(roles!(
+                admin => admin_rule;
+            ))
             .with_address(address_reservation)
             .globalize();
             component_address

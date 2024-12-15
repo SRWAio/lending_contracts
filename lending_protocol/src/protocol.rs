@@ -42,8 +42,8 @@ mod lending_protocol {
     }
 
     struct LendingProtocol {
+        admin_rule: AccessRule,
         assets_in_use: IndexSet<ResourceAddress>,
-        pool_address: Global<Pool>,
         oracle_address: Global<PriceOracle>,
         admin_signature_check: HashMap<NonFungibleLocalId, bool>,
         /// A counter for ID generation
@@ -51,14 +51,65 @@ mod lending_protocol {
         admin_badge_address: ResourceAddress,
         /// User badge resource manager
         user_resource_manager: ResourceManager,
-        /// Admin badge resource manager
-        admin_resource_manager: ResourceManager,
-        /// Protocol badge resource manager
-        protocol_resource_manager: ResourceManager,
+        // Admin badge resource manager
+        //admin_resource_manager: ResourceManager,
+        // Protocol badge resource manager
+        //protocol_resource_manager: ResourceManager,
     }
 
     impl LendingProtocol {
-        pub fn instantiate() {}
+        pub fn instantiate(oracle_address: Global<PriceOracle>) -> NonFungibleBucket {
+            // Get address reservation for the lending market component
+            let (protocol_component_address_reservation, protocol_component_address) =
+                Runtime::allocate_component_address(LendingProtocol::blueprint_id());
+            let component_rule = rule!(require(global_caller(protocol_component_address)));
+
+            // * Create admin badge * //
+
+            // Get address reservation for the admin badge resource address
+            let (admin_badge_address_reservation, admin_badge_address) =
+                Runtime::allocate_non_fungible_address();
+
+            // Admin will be able to create lending pools, update pool configurations and update operating status
+            let admin_rule = rule!(require_amount(dec!(4), admin_badge_address));
+
+            // Moderator will be able to update operating status if the last update was not done by an admin
+            //let moderator_rule = rule!(require_amount(dec!(2), admin_badge_address));
+
+            let admin_badge =
+                create_admin_badge(admin_rule.clone(), admin_badge_address_reservation);
+
+            let user_resource_manager =
+                create_user_resource_manager(admin_rule.clone(), component_rule.clone());
+
+            // *  Instantiate our component with the previously created resources and addresses * //
+            Self {
+                user_resource_manager,
+                admin_rule: admin_rule.clone(),
+                admin_signature_check: HashMap::new(),
+                oracle_address,
+                admin_badge_address: admin_badge.resource_address(),
+                admin_badge_id_counter: 5,
+                assets_in_use: IndexSet::new(),
+            }
+            .instantiate()
+            .prepare_to_globalize(OwnerRole::None)
+            .with_address(protocol_component_address_reservation)
+            .roles(roles! {
+                admin => admin_rule.clone();
+            })
+            .metadata(metadata!(
+                roles {
+                    metadata_setter => admin_rule.clone();
+                    metadata_setter_updater => rule!(deny_all);
+                    metadata_locker => admin_rule;
+                    metadata_locker_updater => rule!(deny_all);
+                }
+            ))
+            .globalize();
+
+            admin_badge
+        }
 
         pub fn deposit() {}
         pub fn withdraw() {}
