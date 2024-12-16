@@ -66,10 +66,7 @@ pub fn create_admin_badge(
         ])
 }
 
-pub fn create_protocol_badge(
-    owner_rule: AccessRule,
-    address_reservation: GlobalAddressReservation,
-) -> NonFungibleBucket {
+pub fn create_protocol_badge(owner_rule: AccessRule) -> NonFungibleBucket {
     ResourceBuilder::new_integer_non_fungible::<ProtocolBadge>(OwnerRole::None)
         .metadata(metadata!(
             roles {
@@ -77,9 +74,11 @@ pub fn create_protocol_badge(
                 metadata_setter_updater => owner_rule.clone();
                 metadata_locker => owner_rule.clone();
                 metadata_locker_updater => owner_rule;
+            },
+            init {
+                "name" => "Protocol Badge", locked;
             }
         ))
-        .with_address(address_reservation)
         .mint_initial_supply([(
             1u64.into(),
             ProtocolBadge {

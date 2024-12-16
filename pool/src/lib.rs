@@ -7,7 +7,7 @@ mod pool {
             admin => updatable_by: [];
         },
         methods {
-
+            deposit => restrict_to :[admin];
             take => restrict_to :[admin];
             put => restrict_to :[admin];
         }
@@ -26,7 +26,7 @@ mod pool {
         pub fn instantiate(
             admin_rule: AccessRule,
             resource_address: ResourceAddress,
-        ) -> ComponentAddress {
+        ) -> (Global<Pool>, ComponentAddress) {
             // Create a new token called "HelloToken," with a fixed supply of 1000, and put that supply into a bucket
             let (address_reservation, component_address) =
                 Runtime::allocate_component_address(Pool::blueprint_id());
@@ -34,7 +34,7 @@ mod pool {
             let component_rule = rule!(require(global_caller(component_address)));
 
             // Instantiate a Hello component, populating its vault with our supply of 1000 HelloToken
-            Self {
+            let pool_component = Self {
                 liquidity_pool: Vault::new(resource_address),
                 deposit: Decimal::zero(),
                 borrow: Decimal::zero(),
@@ -47,7 +47,14 @@ mod pool {
             ))
             .with_address(address_reservation)
             .globalize();
-            component_address
+            (pool_component, component_address)
+        }
+
+        // This is a method, because it needs a reference to self.  Methods can only be called on components
+        pub fn deposit(&mut self) {
+            // If the semi-colon is omitted on the last line, the last value seen is automatically returned
+            // In this case, a bucket containing 1 HelloToken is returned
+            info!("Deposit initiated.");
         }
 
         // This is a method, because it needs a reference to self.  Methods can only be called on components
