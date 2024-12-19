@@ -58,6 +58,13 @@ mod pool {
         }
 
         // This is a method, because it needs a reference to self.  Methods can only be called on components
+        pub fn withdraw(&mut self) {
+            // If the semi-colon is omitted on the last line, the last value seen is automatically returned
+            // In this case, a bucket containing 1 HelloToken is returned
+            info!("Deposit initiated.");
+        }
+
+        // This is a method, because it needs a reference to self.  Methods can only be called on components
         pub fn take(&mut self, amount: Decimal, reserve: Decimal) -> Bucket {
             // If the semi-colon is omitted on the last line, the last value seen is automatically returned
             // In this case, a bucket containing 1 HelloToken is returned

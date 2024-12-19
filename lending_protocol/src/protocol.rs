@@ -3,6 +3,7 @@ use scrypto::prelude::*;
 
 #[blueprint]
 mod lending_protocol {
+    use crate::pool_parameters::PoolParameters;
 
     extern_blueprint! {
     // import the Pool package from the ledger using its package address
@@ -17,7 +18,7 @@ mod lending_protocol {
         fn put(&mut self, bucket: Bucket, reserve: Decimal);
         }
     }
-    /*extern_blueprint! {
+    extern_blueprint! {
     // import the PriceORacle package from the ledger using its package address
     "package_rdx1pkz03xm6yfyuy6ua66w4ypvmpg4dtyxq0hxc6h0nvmzz9dklnf3d73",
     PriceOracle {
@@ -33,7 +34,7 @@ mod lending_protocol {
         //fn insert_to_liquidity_pool(&mut self, asset: Bucket);
 
         }
-    }*/
+    }
 
     enable_method_auth! {
         // decide which methods are public and which are restricted to certain roles
@@ -47,6 +48,7 @@ mod lending_protocol {
             create_pool => restrict_to: [admin];
             deposit =>  PUBLIC;
             insert_pool_component =>  PUBLIC;
+            update_pool_parameters => restrict_to: [admin];
         }
     }
 
@@ -56,7 +58,7 @@ mod lending_protocol {
         admin_rule: AccessRule,
         protocol_rule: AccessRule,
         assets_in_use: IndexSet<ResourceAddress>,
-        //oracle_address: Global<PriceOracle>,
+        oracle_address: Global<PriceOracle>,
         admin_signature_check: HashMap<NonFungibleLocalId, bool>,
         /// A counter for ID generation
         admin_badge_id_counter: u64,
@@ -67,10 +69,11 @@ mod lending_protocol {
         //admin_resource_manager: ResourceManager,
         // Protocol badge resource manager
         //protocol_resource_manager: ResourceManager,
+        pool_parameters: HashMap<ResourceAddress, PoolParameters>,
     }
 
     impl LendingProtocol {
-        pub fn instantiate(/*oracle_address: Global<PriceOracle>*/) -> NonFungibleBucket {
+        pub fn instantiate(oracle_address: Global<PriceOracle>) -> NonFungibleBucket {
             // Get address reservation for the lending market component
             let (protocol_component_address_reservation, protocol_component_address) =
                 Runtime::allocate_component_address(LendingProtocol::blueprint_id());
@@ -108,6 +111,8 @@ mod lending_protocol {
                 admin_badge_address: admin_badge.resource_address(),
                 admin_badge_id_counter: 5,
                 assets_in_use: IndexSet::new(),
+                pool_parameters: HashMap::new(),
+                oracle_address,
             }
             .instantiate()
             .prepare_to_globalize(OwnerRole::None)
@@ -129,7 +134,7 @@ mod lending_protocol {
         }
 
         pub fn instantiate_new_version(
-            //oracle_address: Global<PriceOracle>,
+            oracle_address: Global<PriceOracle>,
             protocol_badge: NonFungibleBucket,
             admin_badge_address: ResourceAddress,
         ) {
@@ -156,6 +161,8 @@ mod lending_protocol {
                 admin_badge_id_counter: 5,
                 //assets_in_use,
                 assets_in_use: IndexSet::new(),
+                pool_parameters: HashMap::new(),
+                oracle_address,
             }
             .instantiate()
             .prepare_to_globalize(OwnerRole::None)
@@ -174,6 +181,14 @@ mod lending_protocol {
             .globalize();
         }
 
+        pub fn insert_pool_component(
+            &mut self,
+            resource_address: ResourceAddress,
+            pool_component: Global<Pool>,
+        ) {
+            self.pools.insert(resource_address, pool_component);
+        }
+
         pub fn create_pool(
             &mut self,
             resource_address: ResourceAddress,
@@ -185,7 +200,42 @@ mod lending_protocol {
             pool_component_address
         }
 
-        pub fn deposit(&mut self, resource_address: ResourceAddress) {
+        pub fn deposit(&mut self, asset: Bucket, user_badge: Proof) {
+            let resource_address = asset.resource_address();
+            let mut pool_parameters: &PoolParameters =
+                self.pool_parameters.get(&resource_address).unwrap();
+
+            let deposit_locked = pool_parameters.deposit_locked;
+            if deposit_locked {
+                panic!("Depositing is locked for now!");
+            }
+            let pool_deposit_limit = pool_parameters.deposit_limit;
+            let asset_total_deposit_balance = pool_parameters.deposit_balance;
+            let asset_total_borrow_balance = pool_parameters.borrow_balance;
+
+            if pool_deposit_limit > Decimal::ZERO {
+                let asset_price = self.oracle_address.get_price(resource_address);
+                let current_deposit_balance =
+                    (asset_total_deposit_balance + asset.amount()) * asset_price;
+                if current_deposit_balance > pool_deposit_limit {
+                    panic!("Deposit limit is {} .", pool_deposit_limit / asset_price);
+                }
+            }
+            let asset_borrow_rate = pool_parameters.borrow_rate;
+            //TO DO:
+            let r_borrow: Decimal = Decimal::one();
+            let reserve_factor = pool_parameters.reserve_factor;
+            //TO DO:
+            let utilisation = Decimal::one();
+            //TO DO:
+            let r_deposit: Decimal = Decimal::one();
+            let user_id = self.get_id_from_proof(user_badge);
+            //TO DO: Check user through user resource manager
+            /*let mut user = self.lending_address.get_user(user_id);
+            if user.user_badge_resource_address != user_badge_resource_address {
+                panic!("User does not exist!");
+            }*/
+
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -193,14 +243,85 @@ mod lending_protocol {
                 .authorize_with_non_fungibles(&non_fungible_local_ids, || pool.deposit());
         }
 
-        pub fn insert_pool_component(
+        pub fn withdraw(
             &mut self,
             resource_address: ResourceAddress,
-            pool_component: Global<Pool>,
+            amount: Decimal,
+            // Commented out for now, will be updated later
+            // sr_tokens: Bucket,
+            user_badge: Proof,
         ) {
-            self.pools.insert(resource_address, pool_component);
+            let mut pool_parameters: &PoolParameters =
+                self.pool_parameters.get(&resource_address).unwrap();
+            let withdraw_locked = pool_parameters.withdraw_locked;
+            if withdraw_locked {
+                panic!("Withdrawing is locked for now!");
+            }
+            let deposit_balance = pool_parameters.deposit_balance;
+            let borrow_balance = pool_parameters.borrow_balance;
+            let reserve_balance = pool_parameters.reserve_balance;
+            let pool_reserve = pool_parameters.pool_reserve;
+
+            let borrowable_amount = self.borrowable_amount(
+                deposit_balance,
+                borrow_balance,
+                reserve_balance,
+                pool_reserve,
+            );
+            if borrowable_amount < amount {
+                panic!("Max withdrawal amount (1) is {}: ", borrowable_amount);
+            }
+
+            //Get user data
+            let user_badge_resource_address = user_badge.resource_address();
+            let user_id = self.get_id_from_proof(user_badge);
+            //TO DO: Check user through user resource manager
+            /*let mut user = self.lending_address.get_user(user_id);
+            if user.user_badge_resource_address != user_badge_resource_address {
+                panic!("User does not exist!");
+            }*/
+            //TO DO: Go through all users resources and find ltv ratios
+            let ltv_ratios = HashMap::new();
+            let asset_ltv_ratio = ltv_ratios.get(&resource_address).unwrap().clone();
+            let mut prices = HashMap::new();
+            for (&res_address, &_ratio) in &ltv_ratios {
+                let mut price_in_xrd = Decimal::ONE;
+                if res_address != XRD {
+                    price_in_xrd = self.oracle_address.get_price_in_xrd(res_address);
+                }
+                prices.insert(res_address, price_in_xrd);
+            }
+
+            let user_available_collateral = Decimal::one();
+            let withdrawable_amount_in_xrd = user_available_collateral / asset_ltv_ratio;
+            let cost_of_asset_in_terms_of_xrd = prices.get(&resource_address).unwrap();
+            let withdrawable_amount = withdrawable_amount_in_xrd / *cost_of_asset_in_terms_of_xrd;
+
+            if amount > withdrawable_amount {
+                panic!("Max withrawal amount is {}: ", withdrawable_amount);
+            }
+
+            let asset_borrow_rate = pool_parameters.borrow_rate;
+
+            let r_borrow: Decimal = Decimal::one();
+            let reserve_factor = pool_parameters.reserve_factor;
+            let utilisation = Decimal::one();
+            let r_deposit: Decimal = Decimal::one();
+
+            // returning the interest that was made
+            let interest = Decimal::one();
+
+            let amount_to_decrease = amount - interest;
+            //TO DO: Update users NFT
+            //user.update_balances(asset_address, r_borrow, r_deposit);
+            //user.on_withdraw(asset_address, amount_to_decrease);
+            let mut pool = self.pools.get(&resource_address).unwrap().clone();
+            let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
+                self.protocol_badge.non_fungible_local_ids(1);
+            self.protocol_badge
+                .authorize_with_non_fungibles(&non_fungible_local_ids, || pool.withdraw());
+            withdrawn_asset
         }
-        pub fn withdraw() {}
         pub fn borrow() {}
         pub fn repay() {}
         pub fn liquidate() {}
@@ -260,6 +381,60 @@ mod lending_protocol {
             } else {
                 true
             }
+        }
+
+        /// Update pool configuration
+        ///
+        /// *Params*
+        /// - `pool_res_address`: The pool resource address for which to change the interest strategy
+        /// - `value`: Input of the pool configuration update
+        pub fn update_pool_parameters(
+            &mut self,
+            resource_address: ResourceAddress,
+            asset_address: ResourceAddress,
+            min_liquidable_value: Decimal,
+            liquidation_reserve_factor: Decimal,
+            liquidation_bonus: Decimal,
+            max_liquidation_percent: Decimal,
+            max_borrow_percent: Decimal,
+            min_collateral_ratio: Decimal,
+            pool_reserve: Decimal,
+            pool_deposit_limit: Decimal,
+        ) {
+            info!("update_pool_parameters initiated.");
+            let is_approved_by_admins = self.is_approved_by_admins();
+            if is_approved_by_admins == false {
+                panic!("Admin functions must be approved by at least 3 admins")
+            }
+            let mut pool_parameters = self.pool_parameters.get(&resource_address);
+            self.admin_signature_check = HashMap::new();
+        }
+
+        fn get_id_from_proof(&mut self, user_badge: Proof) -> Decimal {
+            let manager = ResourceManager::from(user_badge.resource_address());
+            let non_fungible_id = user_badge
+                .check(manager.address())
+                .as_non_fungible()
+                .non_fungible_local_id();
+
+            let user_id = match non_fungible_id {
+                NonFungibleLocalId::Integer(id) => id.value(),
+                _ => panic!("Unexpected NonFungibleLocalId type"),
+            };
+            let user_id_decimal = Decimal::from(user_id);
+            user_id_decimal
+        }
+
+        fn borrowable_amount(
+            &mut self,
+            total_deposit: Decimal,
+            total_borrow: Decimal,
+            reserve_balance: Decimal,
+            pool_reserve: Decimal,
+        ) -> Decimal {
+            let available_pool_amount =
+                total_deposit - reserve_balance - total_deposit * pool_reserve - total_borrow;
+            available_pool_amount
         }
     }
 }
