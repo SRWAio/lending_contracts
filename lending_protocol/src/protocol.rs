@@ -14,6 +14,8 @@ mod lending_protocol {
             resource_address: ResourceAddress,
         ) -> (Global<Pool>, ComponentAddress);
         fn deposit(&mut self);
+        /*fn withdraw(&mut self) -> Bucket;
+        fn borrow(&mut self) -> Bucket;*/
         fn take(&mut self, amount: Decimal, reserve: Decimal)  -> Bucket;
         fn put(&mut self, bucket: Bucket, reserve: Decimal);
         }
@@ -47,6 +49,9 @@ mod lending_protocol {
             take_protocol_badge => restrict_to: [admin];
             create_pool => restrict_to: [admin];
             deposit =>  PUBLIC;
+            withdraw =>  PUBLIC;
+            borrow =>  PUBLIC;
+            repay => PUBLIC;
             insert_pool_component =>  PUBLIC;
             update_pool_parameters => restrict_to: [admin];
         }
@@ -250,23 +255,18 @@ mod lending_protocol {
             // Commented out for now, will be updated later
             // sr_tokens: Bucket,
             user_badge: Proof,
-        ) {
-            let mut pool_parameters: &PoolParameters =
-                self.pool_parameters.get(&resource_address).unwrap();
+        ) -> Bucket {
+            let pool_parameters = self.pool_parameters.get(&resource_address).unwrap().clone();
             let withdraw_locked = pool_parameters.withdraw_locked;
             if withdraw_locked {
                 panic!("Withdrawing is locked for now!");
             }
-            let deposit_balance = pool_parameters.deposit_balance;
-            let borrow_balance = pool_parameters.borrow_balance;
-            let reserve_balance = pool_parameters.reserve_balance;
-            let pool_reserve = pool_parameters.pool_reserve;
 
             let borrowable_amount = self.borrowable_amount(
-                deposit_balance,
-                borrow_balance,
-                reserve_balance,
-                pool_reserve,
+                pool_parameters.deposit_balance,
+                pool_parameters.borrow_balance,
+                pool_parameters.reserve_balance,
+                pool_parameters.pool_reserve,
             );
             if borrowable_amount < amount {
                 panic!("Max withdrawal amount (1) is {}: ", borrowable_amount);
@@ -281,7 +281,8 @@ mod lending_protocol {
                 panic!("User does not exist!");
             }*/
             //TO DO: Go through all users resources and find ltv ratios
-            let ltv_ratios = HashMap::new();
+            let mut ltv_ratios = HashMap::new();
+            ltv_ratios.insert(resource_address, Decimal::ONE);
             let asset_ltv_ratio = ltv_ratios.get(&resource_address).unwrap().clone();
             let mut prices = HashMap::new();
             for (&res_address, &_ratio) in &ltv_ratios {
@@ -315,15 +316,132 @@ mod lending_protocol {
             //TO DO: Update users NFT
             //user.update_balances(asset_address, r_borrow, r_deposit);
             //user.on_withdraw(asset_address, amount_to_decrease);
+            let amount_to_take = Decimal::one();
+            let reserve_amount = Decimal::one();
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
-            self.protocol_badge
-                .authorize_with_non_fungibles(&non_fungible_local_ids, || pool.withdraw());
+            let withdrawn_asset = self
+                .protocol_badge
+                .authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                    pool.take(amount_to_take, reserve_amount)
+                });
             withdrawn_asset
         }
-        pub fn borrow() {}
-        pub fn repay() {}
+
+        pub fn borrow(
+            &mut self,
+            asset_address: ResourceAddress,
+            amount: Decimal,
+            user_badge: Proof,
+        ) -> Bucket {
+            let pool_parameters = self.pool_parameters.get(&asset_address).unwrap().clone();
+            let borrow_locked = pool_parameters.borrow_locked;
+            if borrow_locked {
+                panic!("Withdrawing is locked for now!");
+            }
+
+            let borrowable_amount = self.borrowable_amount(
+                pool_parameters.deposit_balance,
+                pool_parameters.borrow_balance,
+                pool_parameters.reserve_balance,
+                pool_parameters.pool_reserve,
+            );
+            if borrowable_amount < amount {
+                panic!("Max borrow amount is {}: ", borrowable_amount);
+            }
+
+            //Get user data
+            let user_badge_resource_address = user_badge.resource_address();
+            let user_id = self.get_id_from_proof(user_badge);
+            /*if user.user_badge_resource_address != user_badge_resource_address {
+                panic!("User does not exist!");
+            }*/
+
+            let mut asset_ltv_ratios = HashMap::new();
+            asset_ltv_ratios.insert(asset_address, Decimal::one());
+            let mut prices = HashMap::new();
+            for (&res_address, &_ratio) in &asset_ltv_ratios {
+                let mut price_in_xrd = Decimal::ONE;
+                if res_address != XRD {
+                    price_in_xrd = self.oracle_address.get_price_in_xrd(res_address);
+                }
+                prices.insert(res_address, price_in_xrd);
+            }
+            let cost_of_asset_in_terms_of_xrd = prices.get(&asset_address).unwrap();
+
+            let borrow_amount_in_terms_of_xrd = amount * *cost_of_asset_in_terms_of_xrd;
+            // Check if user has enough collateral
+            let user_available_collateral =
+                Decimal::one()/*calculations::calculate_available_collateral(&user, &asset_ltv_ratios, &prices)*/;
+            assert!(
+                user_available_collateral >= borrow_amount_in_terms_of_xrd,
+                "[borrow_asset][POOL] User does not have enough collateral. Requested loan with \
+                  value of `{:?}` XRD but only has `{:?}` XRD of available collateral.",
+                borrow_amount_in_terms_of_xrd,
+                user_available_collateral
+            );
+
+            let asset_borrow_rate = pool_parameters.borrow_rate;
+
+            let r_borrow: Decimal = Decimal::one()/*calculations::calculate_r_borrow(asset_borrow_rate)*/;
+
+            let reserve_factor = pool_parameters.reserve_factor;
+            let utilisation = Decimal::one()/*calculations::get_utilisation(deposit_balance, borrow_balance)*/;
+            let r_deposit: Decimal =
+            Decimal::one()/*calculations::calculate_r_deposit(r_borrow, reserve_factor, utilisation)*/;
+            /*let mut user = self.lending_address.get_user(user_id);
+            user.update_balances(asset_address, r_borrow, r_deposit);
+            user.on_borrow(asset_address, amount);*/
+            let amount_to_take = Decimal::one();
+            let reserve_amount = Decimal::one();
+            let mut pool = self.pools.get(&asset_address).unwrap().clone();
+            let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
+                self.protocol_badge.non_fungible_local_ids(1);
+            let borrowed_asset = self
+                .protocol_badge
+                .authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                    pool.take(amount_to_take, reserve_amount)
+                });
+
+            borrowed_asset
+        }
+        pub fn repay(&mut self, repaid: Bucket, user_badge: Proof) -> Bucket {
+            let asset_address = repaid.resource_address();
+            let pool_parameters = self.pool_parameters.get(&asset_address).unwrap().clone();
+            let repay_locked = pool_parameters.repay_locked;
+            if repay_locked {
+                panic!("Withdrawing is locked for now!");
+            }
+            let asset_borrow_rate = pool_parameters.borrow_rate;
+
+            let r_borrow: Decimal = Decimal::one()/*calculations::calculate_r_borrow(asset_borrow_rate)*/;
+            let asset_total_deposit_balance = pool_parameters.deposit_balance;
+            let asset_total_borrow_balance = pool_parameters.borrow_balance;
+            let reserve_factor = pool_parameters.reserve_factor;
+            let utilisation = Decimal::one()/*calculations::get_utilisation(
+                asset_total_deposit_balance,
+                asset_total_borrow_balance,
+            )*/;
+            let r_deposit: Decimal =Decimal::one()
+                /*calculations::calculate_r_deposit(r_borrow, reserve_factor, utilisation)*/;
+            let user_badge_resource_address = user_badge.resource_address();
+            let user_id = self.get_id_from_proof(user_badge);
+            /*if user.user_badge_resource_address != user_badge_resource_address {
+                panic!("User does not exist!");
+            }*/
+            let to_return_amount = Decimal::one();
+            let mut pool = self.pools.get(&asset_address).unwrap().clone();
+            let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
+                self.protocol_badge.non_fungible_local_ids(1);
+            let to_return = self
+                .protocol_badge
+                .authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                    pool.take(to_return_amount, to_return_amount)
+                });
+
+            to_return
+        }
         pub fn liquidate() {}
 
         pub fn approve_admin_functions(&mut self, admin_badge: Proof) {
@@ -364,15 +482,6 @@ mod lending_protocol {
             self.admin_signature_check = HashMap::new();
             new_admin_badge
         }
-
-        /*pub fn take_protocol_badge(&mut self) -> Bucket {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
-            }
-            self.admin_signature_check = HashMap::new();
-            lending_badge
-        }*/
 
         fn is_approved_by_admins(&mut self) -> bool {
             let singature_count = self.admin_signature_check.len();
