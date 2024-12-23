@@ -87,29 +87,6 @@ pub fn create_protocol_badge(owner_rule: AccessRule) -> NonFungibleBucket {
         )])
 }
 
-pub fn create_user_badge(
-    owner_rule: AccessRule,
-    address_reservation: GlobalAddressReservation,
-    id: u64,
-) -> NonFungibleBucket {
-    ResourceBuilder::new_integer_non_fungible::<UserBadge>(OwnerRole::None)
-        .metadata(metadata!(
-            roles {
-                metadata_setter => owner_rule.clone();
-                metadata_setter_updater => owner_rule.clone();
-                metadata_locker => owner_rule.clone();
-                metadata_locker_updater => owner_rule;
-            }
-        ))
-        .with_address(address_reservation)
-        .mint_initial_supply([(
-            id.into(),
-            UserBadge {
-                name: "User Badge".to_string(),
-            },
-        )])
-}
-
 pub fn create_user_resource_manager(
     owner_rule: AccessRule,
     component_rule: AccessRule,

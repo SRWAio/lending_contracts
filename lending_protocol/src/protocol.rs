@@ -1,4 +1,5 @@
 use crate::resources::*;
+use crate::user::UserData;
 use scrypto::prelude::*;
 
 #[blueprint]
@@ -48,6 +49,7 @@ mod lending_protocol {
             mint_admin_badge => restrict_to: [admin];
             take_protocol_badge => restrict_to: [admin];
             create_pool => restrict_to: [admin];
+            create_user_and_deposit =>  PUBLIC;
             deposit =>  PUBLIC;
             withdraw =>  PUBLIC;
             borrow =>  PUBLIC;
@@ -211,6 +213,64 @@ mod lending_protocol {
             self.pools
                 .insert(resource_address, pool_component_address.0);
             pool_component_address
+        }
+
+        pub fn create_user_and_deposit(&mut self, asset: Bucket) {
+            let resource_address = asset.resource_address();
+            let mut pool_parameters: &PoolParameters =
+                self.pool_parameters.get(&resource_address).unwrap();
+
+            let deposit_locked = pool_parameters.deposit_locked;
+            if deposit_locked {
+                panic!("Depositing is locked for now!");
+            }
+            let pool_deposit_limit = pool_parameters.deposit_limit;
+            let asset_total_deposit_balance = pool_parameters.deposit_balance;
+            let asset_total_borrow_balance = pool_parameters.borrow_balance;
+
+            if pool_deposit_limit > Decimal::ZERO {
+                let asset_price = self.oracle_address.get_price(resource_address);
+                let current_deposit_balance =
+                    (asset_total_deposit_balance + asset.amount()) * asset_price;
+                if current_deposit_balance > pool_deposit_limit {
+                    panic!("Deposit limit is {} .", pool_deposit_limit / asset_price);
+                }
+            }
+            let asset_borrow_rate = pool_parameters.borrow_rate;
+            //TO DO:
+            let r_borrow: Decimal = Decimal::one();
+            let reserve_factor = pool_parameters.reserve_factor;
+            //TO DO:
+            let utilisation = Decimal::one();
+            //TO DO:
+            let r_deposit: Decimal = Decimal::one();
+            let mut user_count = self.user_resource_manager.total_supply().unwrap();
+            user_count += Decimal::one();
+            let user_id_converted: u64 = user_count.try_into().unwrap();
+
+            let user_id = NonFungibleLocalId::Integer(user_id_converted.into());
+            let now = Clock::current_time(TimePrecision::Second).seconds_since_unix_epoch;
+
+            let data = UserData {
+                name: "".into(),
+                image_url: "".into(),
+                deposits: IndexMap::new(),
+                borrows: IndexMap::new(),
+                minted_at: now,
+                updated_at: now,
+            };
+            let user = self.user_resource_manager.mint_non_fungible(&user_id, data);
+            //TO DO: Check user through user resource manager
+            /*let mut user = self.lending_address.get_user(user_id);
+            if user.user_badge_resource_address != user_badge_resource_address {
+                panic!("User does not exist!");
+            }*/
+            let reserve = Decimal::one();
+            let mut pool = self.pools.get(&resource_address).unwrap().clone();
+            let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
+                self.protocol_badge.non_fungible_local_ids(1);
+            self.protocol_badge
+                .authorize_with_non_fungibles(&non_fungible_local_ids, || pool.put(asset, reserve));
         }
 
         pub fn deposit(&mut self, asset: Bucket, user_badge: Proof) {
