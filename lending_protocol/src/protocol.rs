@@ -69,7 +69,7 @@ mod lending_protocol {
         admin_badge_id_counter: u64,
         admin_badge_address: ResourceAddress,
         /// User badge resource manager
-        user_resource_manager: ResourceManager,
+        user_resource_manager: NonFungibleResourceManager,
         // Admin badge resource manager
         //admin_resource_manager: ResourceManager,
         // Protocol badge resource manager
@@ -141,17 +141,25 @@ mod lending_protocol {
         pub fn instantiate_new_version(
             oracle_address: Global<PriceOracle>,
             protocol_badge: NonFungibleBucket,
-            admin_badge_address: ResourceAddress,
+            user_badge_address: ResourceAddress,
+            admin_badge: Proof,
         ) {
             // Get address reservation for the lending market component
             let (protocol_component_address_reservation, protocol_component_address) =
                 Runtime::allocate_component_address(LendingProtocol::blueprint_id());
+            let admin_badge_address = admin_badge.resource_address();
             let component_rule = rule!(require(global_caller(protocol_component_address)));
             // Admin will be able to create lending pools, update pool configurations and update operating status
             let admin_rule: AccessRule = rule!(require(admin_badge_address));
-            let user_resource_manager =
-                create_user_resource_manager(admin_rule.clone(), component_rule.clone());
+            let user_resource_manager: NonFungibleResourceManager = user_badge_address.into();
             let protocol_rule: AccessRule = rule!(require(protocol_badge.resource_address()));
+            let user_resource_manager: NonFungibleResourceManager = user_badge_address.into();
+
+            admin_badge.authorize(|| {
+                user_resource_manager.set_updatable_non_fungible_data(component_rule.clone());
+                user_resource_manager.set_burnable(component_rule.clone());
+                user_resource_manager.set_mintable(component_rule.clone());
+            });
 
             // *  Instantiate our component with the previously created resources and addresses * //
             Self {
@@ -240,12 +248,12 @@ mod lending_protocol {
             if user.user_badge_resource_address != user_badge_resource_address {
                 panic!("User does not exist!");
             }*/
-
+            let reserve = Decimal::one();
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
             self.protocol_badge
-                .authorize_with_non_fungibles(&non_fungible_local_ids, || pool.deposit());
+                .authorize_with_non_fungibles(&non_fungible_local_ids, || pool.put(asset, reserve));
         }
 
         pub fn withdraw(
@@ -406,7 +414,9 @@ mod lending_protocol {
 
             borrowed_asset
         }
-        pub fn repay(&mut self, repaid: Bucket, user_badge: Proof) -> Bucket {
+
+        pub fn repay(&mut self, repaid: Bucket, user_badge: Proof) /*-> Bucket*/
+        {
             let asset_address = repaid.resource_address();
             let pool_parameters = self.pool_parameters.get(&asset_address).unwrap().clone();
             let repay_locked = pool_parameters.repay_locked;
@@ -430,17 +440,17 @@ mod lending_protocol {
             /*if user.user_badge_resource_address != user_badge_resource_address {
                 panic!("User does not exist!");
             }*/
-            let to_return_amount = Decimal::one();
+            let reserve = Decimal::ONE;
+            //let to_return
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
-            let to_return = self
-                .protocol_badge
+            self.protocol_badge
                 .authorize_with_non_fungibles(&non_fungible_local_ids, || {
-                    pool.take(to_return_amount, to_return_amount)
+                    pool.put(repaid, reserve)
                 });
 
-            to_return
+            //to_return_amount
         }
         pub fn liquidate() {}
 

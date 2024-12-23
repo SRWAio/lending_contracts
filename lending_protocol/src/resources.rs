@@ -113,27 +113,27 @@ pub fn create_user_badge(
 pub fn create_user_resource_manager(
     owner_rule: AccessRule,
     component_rule: AccessRule,
-) -> ResourceManager {
+) -> NonFungibleResourceManager {
     ResourceBuilder::new_integer_non_fungible::<UserData>(OwnerRole::None)
         .metadata(metadata!(
             roles {
                 metadata_setter => owner_rule.clone();
                 metadata_setter_updater => owner_rule.clone();
                 metadata_locker => owner_rule.clone();
-                metadata_locker_updater => owner_rule;
+                metadata_locker_updater => owner_rule.clone();
             }
         ))
         .mint_roles(mint_roles! {
           minter => component_rule.clone();
-          minter_updater => rule!(deny_all);
+          minter_updater => owner_rule.clone();
         })
         .burn_roles(burn_roles! {
           burner => component_rule.clone();
-          burner_updater => rule!(deny_all);
+          burner_updater => owner_rule.clone();
         })
         .non_fungible_data_update_roles(non_fungible_data_update_roles! {
           non_fungible_data_updater => component_rule.clone();
-          non_fungible_data_updater_updater => rule!(deny_all);
+          non_fungible_data_updater_updater => owner_rule.clone();
         })
         .create_with_no_initial_supply()
         .into()
