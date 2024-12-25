@@ -8,6 +8,7 @@ mod pool {
         },
         methods {
             deposit => restrict_to :[admin];
+            withdraw => restrict_to :[admin];
             take => restrict_to :[admin];
             put => restrict_to :[admin];
         }
@@ -17,28 +18,32 @@ mod pool {
         // The liquidity pool
         liquidity_pool: Vault,
         deposit: Decimal,
+        sr_deposit: Decimal,
         borrow: Decimal,
+        sr_borrow: Decimal,
         reserve: Decimal,
+        updated_at: i64,
     }
 
     impl Pool {
-        // This is a function, and can be called directly on the blueprint once deployed
         pub fn instantiate(
             admin_rule: AccessRule,
             resource_address: ResourceAddress,
         ) -> (Global<Pool>, ComponentAddress) {
-            // Create a new token called "HelloToken," with a fixed supply of 1000, and put that supply into a bucket
             let (address_reservation, component_address) =
                 Runtime::allocate_component_address(Pool::blueprint_id());
 
             let component_rule = rule!(require(global_caller(component_address)));
 
-            // Instantiate a Hello component, populating its vault with our supply of 1000 HelloToken
+            // Instantiate a pool_component
             let pool_component = Self {
                 liquidity_pool: Vault::new(resource_address),
                 deposit: Decimal::zero(),
+                sr_deposit: Decimal::zero(),
+                sr_borrow: Decimal::zero(),
                 borrow: Decimal::zero(),
                 reserve: Decimal::zero(),
+                updated_at: 0,
             }
             .instantiate()
             .prepare_to_globalize(OwnerRole::None)

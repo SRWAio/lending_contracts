@@ -44,6 +44,9 @@ pub struct PoolParameters {
     pub borrow_rate: Decimal,
     pub deposit_rate: Decimal,
     pub reserve_balance: Decimal,
+    pub sr_deposit_balance: Decimal,
+    pub sr_borrow_balance: Decimal,
+    pub balances_updated_at: u64,
 }
 impl PoolParameters {
     pub fn get_pool_parameters(
@@ -81,5 +84,18 @@ impl PoolParameters {
         self.min_collateral_ratio = min_collateral_ratio;
         self.pool_reserve = pool_reserve;
         self.deposit_limit = pool_deposit_limit;
+    }
+
+    pub fn update_balances(
+        &mut self,
+        deposit_balance: Decimal,
+        sd_balance: Decimal,
+        borrow_balance: Decimal,
+        sb_balance: Decimal,
+    ) {
+        self.deposit_balance = deposit_balance;
+        self.sr_deposit_balance = sd_balance;
+        self.borrow_balance = borrow_balance;
+        self.sr_borrow_balance = sb_balance;
     }
 }

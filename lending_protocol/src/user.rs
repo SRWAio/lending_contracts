@@ -20,9 +20,19 @@ pub struct UserData {
 
     /// All users deposits.
     #[mutable]
-    pub deposits: IndexMap<ResourceAddress, PreciseDecimal>,
+    pub deposits: IndexMap<ResourceAddress, Decimal>,
+
+    #[mutable]
+    pub sr_deposits: IndexMap<ResourceAddress, Decimal>,
+    #[mutable]
+    pub deposit_epoch: IndexMap<ResourceAddress, i64>,
 
     /// All users borrows.
     #[mutable]
-    pub borrows: IndexMap<ResourceAddress, PreciseDecimal>,
+    pub borrows: IndexMap<ResourceAddress, Decimal>,
+
+    #[mutable]
+    pub sr_borrows: IndexMap<ResourceAddress, Decimal>,
+    #[mutable]
+    pub borrow_epoch: IndexMap<ResourceAddress, i64>,
 }
