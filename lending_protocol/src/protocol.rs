@@ -294,7 +294,10 @@ mod lending_protocol {
                 sr_deposit_balance,
             );
             sr_deposit_balance += sd_reward;
-            let mut user_count = self.user_resource_manager.total_supply().unwrap();
+            let mut user_count = match self.user_resource_manager.total_supply() {
+                Some(value) => value,
+                None => Decimal::zero(),
+            };
             user_count += Decimal::one();
             let user_id_converted: u64 = user_count.try_into().unwrap();
             let user_id = NonFungibleLocalId::Integer(user_id_converted.into());
