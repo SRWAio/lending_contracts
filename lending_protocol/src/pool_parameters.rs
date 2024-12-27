@@ -66,7 +66,6 @@ impl PoolParameters {
 
     pub fn update_pool_parameters(
         &mut self,
-        asset_address: ResourceAddress,
         min_liquidable_value: Decimal,
         liquidation_reserve_factor: Decimal,
         liquidation_bonus: Decimal,

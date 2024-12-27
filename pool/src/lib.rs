@@ -22,7 +22,7 @@ mod pool {
         borrow: Decimal,
         sr_borrow: Decimal,
         reserve: Decimal,
-        updated_at: i64,
+        updated_at: u64,
     }
 
     impl Pool {
@@ -70,18 +70,41 @@ mod pool {
         }
 
         // This is a method, because it needs a reference to self.  Methods can only be called on components
-        pub fn take(&mut self, amount: Decimal, reserve: Decimal) -> Bucket {
-            // If the semi-colon is omitted on the last line, the last value seen is automatically returned
-            // In this case, a bucket containing 1 HelloToken is returned
-            self.borrow += amount;
-            self.reserve += reserve;
+        pub fn take(
+            &mut self,
+            amount: Decimal,
+            deposit: Decimal,
+            sr_deposit: Decimal,
+            borrow: Decimal,
+            sr_borrow: Decimal,
+            reserve: Decimal,
+        ) -> Bucket {
+            self.borrow = borrow;
+            self.deposit = deposit;
+            self.sr_deposit = sr_deposit;
+            self.sr_borrow = sr_borrow;
+            self.reserve = reserve;
+            self.updated_at = Runtime::current_epoch().number();
             self.liquidity_pool.take(amount)
         }
 
         // This is a method, because it needs a reference to self.  Methods can only be called on components
-        pub fn put(&mut self, bucket: Bucket, reserve: Decimal) {
-            self.deposit += bucket.amount();
-            self.reserve += reserve;
+        pub fn put(
+            &mut self,
+            bucket: Bucket,
+            deposit: Decimal,
+            sr_deposit: Decimal,
+            borrow: Decimal,
+            sr_borrow: Decimal,
+            reserve: Decimal,
+        ) {
+            self.borrow = borrow;
+            self.deposit = deposit;
+            self.sr_deposit = sr_deposit;
+
+            self.sr_borrow = sr_borrow;
+            self.reserve = reserve;
+
             self.liquidity_pool.put(bucket)
 
             // If the semi-colon is omitted on the last line, the last value seen is automatically returned

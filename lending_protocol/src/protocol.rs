@@ -18,8 +18,18 @@ mod lending_protocol {
         fn deposit(&mut self);
         /*fn withdraw(&mut self) -> Bucket;
         fn borrow(&mut self) -> Bucket;*/
-        fn take(&mut self, amount: Decimal, reserve: Decimal)  -> Bucket;
-        fn put(&mut self, bucket: Bucket, reserve: Decimal);
+        fn take(&mut self, amount: Decimal,
+            deposit: Decimal,
+            sr_deposit: Decimal,
+            borrow: Decimal,
+            sr_borrow: Decimal,
+            reserve: Decimal,)  -> Bucket;
+        fn put(&mut self, bucket: Bucket,
+            deposit: Decimal,
+            sr_deposit: Decimal,
+            borrow: Decimal,
+            sr_borrow: Decimal,
+            reserve: Decimal,);
         }
     }
     extern_blueprint! {
@@ -115,7 +125,6 @@ mod lending_protocol {
                 admin_rule: admin_rule.clone(),
                 protocol_rule: protocol_rule,
                 admin_signature_check: HashMap::new(),
-                //oracle_address,
                 admin_badge_address: admin_badge.resource_address(),
                 admin_badge_id_counter: 5,
                 assets_in_use: IndexSet::new(),
@@ -330,7 +339,14 @@ mod lending_protocol {
                 self.protocol_badge.non_fungible_local_ids(1);
             self.protocol_badge
                 .authorize_with_non_fungibles(&non_fungible_local_ids, || {
-                    pool.put(asset, Decimal::ONE)
+                    pool.put(
+                        asset,
+                        asset_total_deposit_balance,
+                        sr_deposit_balance,
+                        asset_total_borrow_balance,
+                        pool_parameters.sr_borrow_balance,
+                        asset_total_reserve_balance,
+                    )
                 });
             user
         }
@@ -387,12 +403,20 @@ mod lending_protocol {
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2 + asset_amount;
-            let reserve = Decimal::one();
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
             self.protocol_badge
-                .authorize_with_non_fungibles(&non_fungible_local_ids, || pool.put(asset, reserve));
+                .authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                    pool.put(
+                        asset,
+                        asset_total_deposit_balance,
+                        sr_deposit_balance,
+                        asset_total_borrow_balance,
+                        pool_parameters.sr_borrow_balance,
+                        asset_total_reserve_balance,
+                    )
+                });
         }
 
         pub fn withdraw(
@@ -472,15 +496,21 @@ mod lending_protocol {
             //TO DO: Update users NFT
             //user.on_withdraw(asset_address, amount_to_decrease);
             let amount_to_take = Decimal::one();
-            let reserve_amount = Decimal::one();
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
-            let withdrawn_asset = self
-                .protocol_badge
-                .authorize_with_non_fungibles(&non_fungible_local_ids, || {
-                    pool.take(amount_to_take, reserve_amount)
-                });
+            let withdrawn_asset =
+                self.protocol_badge
+                    .authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                        pool.take(
+                            amount_to_take,
+                            asset_total_deposit_balance,
+                            pool_parameters.sr_deposit_balance,
+                            asset_total_borrow_balance,
+                            pool_parameters.sr_borrow_balance,
+                            asset_total_reserve_balance,
+                        )
+                    });
             withdrawn_asset
         }
 
@@ -565,11 +595,18 @@ mod lending_protocol {
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
-            let borrowed_asset = self
-                .protocol_badge
-                .authorize_with_non_fungibles(&non_fungible_local_ids, || {
-                    pool.take(amount_to_take, reserve_amount)
-                });
+            let borrowed_asset =
+                self.protocol_badge
+                    .authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                        pool.take(
+                            amount_to_take,
+                            asset_total_deposit_balance,
+                            pool_parameters.sr_deposit_balance,
+                            asset_total_borrow_balance,
+                            pool_parameters.sr_borrow_balance,
+                            asset_total_reserve_balance,
+                        )
+                    });
 
             borrowed_asset
         }
@@ -615,7 +652,14 @@ mod lending_protocol {
                 self.protocol_badge.non_fungible_local_ids(1);
             self.protocol_badge
                 .authorize_with_non_fungibles(&non_fungible_local_ids, || {
-                    pool.put(repaid, Decimal::ONE)
+                    pool.put(
+                        repaid,
+                        asset_total_deposit_balance,
+                        sr_deposit_balance,
+                        asset_total_borrow_balance,
+                        pool_parameters.sr_borrow_balance,
+                        asset_total_reserve_balance,
+                    )
                 });
 
             //to_return_amount
@@ -670,15 +714,9 @@ mod lending_protocol {
             }
         }
 
-        /// Update pool configuration
-        ///
-        /// *Params*
-        /// - `pool_res_address`: The pool resource address for which to change the interest strategy
-        /// - `value`: Input of the pool configuration update
         pub fn update_pool_parameters(
             &mut self,
             resource_address: ResourceAddress,
-            asset_address: ResourceAddress,
             min_liquidable_value: Decimal,
             liquidation_reserve_factor: Decimal,
             liquidation_bonus: Decimal,
@@ -693,7 +731,20 @@ mod lending_protocol {
             if is_approved_by_admins == false {
                 panic!("Admin functions must be approved by at least 3 admins")
             }
-            let mut pool_parameters = self.pool_parameters.get(&resource_address);
+            self.pool_parameters
+                .get_mut(&resource_address)
+                .unwrap()
+                .update_pool_parameters(
+                    min_liquidable_value,
+                    liquidation_reserve_factor,
+                    liquidation_bonus,
+                    max_liquidation_percent,
+                    max_borrow_percent,
+                    min_collateral_ratio,
+                    pool_reserve,
+                    pool_deposit_limit,
+                );
+
             self.admin_signature_check = HashMap::new();
         }
 
