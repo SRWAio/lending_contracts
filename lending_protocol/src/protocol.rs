@@ -655,7 +655,7 @@ mod lending_protocol {
                     pool.put(
                         repaid,
                         asset_total_deposit_balance,
-                        sr_deposit_balance,
+                        pool_parameters.sr_deposit_balance,
                         asset_total_borrow_balance,
                         pool_parameters.sr_borrow_balance,
                         asset_total_reserve_balance,
