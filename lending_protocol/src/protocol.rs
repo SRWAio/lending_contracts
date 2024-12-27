@@ -208,11 +208,44 @@ mod lending_protocol {
         pub fn create_pool(
             &mut self,
             resource_address: ResourceAddress,
+            /*pool_parameters: PoolParameters,*/
         ) -> (Global<Pool>, ComponentAddress) {
             let pool_component_address =
                 Blueprint::<Pool>::instantiate(self.protocol_rule.clone(), resource_address);
             self.pools
                 .insert(resource_address, pool_component_address.0);
+            let now = Runtime::current_epoch().number();
+
+            let data = PoolParameters {
+                balances_updated_at: now,
+                base: dec!("0.001"),
+                min_collateral_ratio: Decimal::one(),
+                max_borrow_percent: dec!("0.1"),
+                max_liquidation_percent: dec!("0.5"),
+                liquidation_bonus: dec!("0.1"),
+                ltv_ratio: dec!("0.5"),
+                multiplier: dec!("10"),
+                base_multiplier: dec!("0.03"),
+                reserve_factor: Decimal::zero(),
+                kink: dec!("0.7"),
+                liquidation_reserve_factor: dec!("0.2"),
+                min_liquidable_value: dec!("6000"),
+                deposit_locked: false,
+                borrow_locked: false,
+                withdraw_locked: false,
+                repay_locked: false,
+                pool_reserve: dec!("0.2"),
+                deposit_limit: dec!("10000"),
+                borrow_balance: Decimal::zero(),
+                deposit_balance: Decimal::zero(),
+                borrow_rate: Decimal::zero(),
+                deposit_rate: Decimal::zero(),
+                reserve_balance: Decimal::zero(),
+                sr_deposit_balance: Decimal::zero(),
+                sr_borrow_balance: Decimal::zero(),
+            };
+
+            self.pool_parameters.insert(resource_address, data);
             pool_component_address
         }
 
