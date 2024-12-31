@@ -9,7 +9,7 @@ mod lending_protocol {
 
     extern_blueprint! {
     // import the Pool package from the ledger using its package address
-    "package_sim1pk3cmat8st4ja2ms8mjqy2e9ptk8y6cx40v4qnfrkgnxcp2krkpr92",
+    "package_tdx_2_1pkyaukzcnlcw2uvna5qkdgrans3duhsqahnxh86pugpsa4ml255knx",
     Pool {
         fn instantiate(
             admin_rule: AccessRule,
@@ -34,7 +34,7 @@ mod lending_protocol {
     }
     extern_blueprint! {
     // import the PriceORacle package from the ledger using its package address
-    "package_rdx1pkz03xm6yfyuy6ua66w4ypvmpg4dtyxq0hxc6h0nvmzz9dklnf3d73",
+    "package_tdx_2_1p5w9qvrjd0twmwqd5np9kzey688muve8q82ac3ftsq470xc2uxc44k",
     PriceOracle {
         // Blueprint Functions
         /*fn instantiate_owned(price: Decimal, component_address: ComponentAddress) -> Owned<Lending>;
@@ -88,6 +88,7 @@ mod lending_protocol {
         // Protocol badge resource manager
         //protocol_resource_manager: ResourceManager,
         pool_parameters: HashMap<ResourceAddress, PoolParameters>,
+        ltv_ratios: HashMap<ResourceAddress, Decimal>,
     }
 
     impl LendingProtocol {
@@ -130,6 +131,7 @@ mod lending_protocol {
                 assets_in_use: IndexSet::new(),
                 pool_parameters: HashMap::new(),
                 oracle_address,
+                ltv_ratios: HashMap::new(),
             }
             .instantiate()
             .prepare_to_globalize(OwnerRole::None)
@@ -188,6 +190,7 @@ mod lending_protocol {
                 assets_in_use: IndexSet::new(),
                 pool_parameters: HashMap::new(),
                 oracle_address,
+                ltv_ratios: HashMap::new(),
             }
             .instantiate()
             .prepare_to_globalize(OwnerRole::None)
@@ -223,6 +226,7 @@ mod lending_protocol {
                 Blueprint::<Pool>::instantiate(self.protocol_rule.clone(), resource_address);
             self.pools
                 .insert(resource_address, pool_component_address.0);
+            self.ltv_ratios.insert(resource_address, dec!("0.5"));
             let now = Runtime::current_epoch().number();
 
             let data = PoolParameters {
@@ -261,7 +265,7 @@ mod lending_protocol {
         pub fn create_user_and_deposit(&mut self, asset: Bucket) -> NonFungibleBucket {
             let resource_address = asset.resource_address();
             let asset_amount = asset.amount();
-            let mut pool_parameters: &PoolParameters =
+            let pool_parameters: &PoolParameters =
                 self.pool_parameters.get(&resource_address).unwrap();
 
             let deposit_locked = pool_parameters.deposit_locked;
@@ -319,8 +323,8 @@ mod lending_protocol {
             deposit_epoch.insert(resource_address, now);
 
             let data = UserData {
-                name: "".into(),
-                image_url: "".into(),
+                name: "User Badge".into(),
+                image_url: "https://demo.srwa.io/images/badge.png".into(),
                 deposits,
                 sr_deposits,
                 borrows: IndexMap::new(),
@@ -355,7 +359,7 @@ mod lending_protocol {
             let resource_address = asset.resource_address();
             let asset_amount = asset.amount();
             let user_badge_resource_address = user_badge.resource_address();
-            let mut pool_parameters: &PoolParameters =
+            let pool_parameters: &PoolParameters =
                 self.pool_parameters.get(&resource_address).unwrap();
 
             let deposit_locked = pool_parameters.deposit_locked;
@@ -397,12 +401,20 @@ mod lending_protocol {
                 sr_deposit_balance,
             );
             sr_deposit_balance += sd_reward;
-            if self.user_resource_manager.address() != user_badge_resource_address {
+            let manager_address = self.user_resource_manager.address();
+            if manager_address != user_badge_resource_address {
                 panic!("User does not exist!");
             };
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2 + asset_amount;
+            let non_fungible_id = user_badge
+                .check(manager_address)
+                .as_non_fungible()
+                .non_fungible_local_id();
+            let user: UserData = self
+                .user_resource_manager
+                .get_non_fungible_data(&non_fungible_id);
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -429,7 +441,9 @@ mod lending_protocol {
         ) -> Bucket {
             //Get user badge
             let user_badge_resource_address = user_badge.resource_address();
-            if self.user_resource_manager.address() != user_badge_resource_address {
+            let manager_address = self.user_resource_manager.address();
+
+            if manager_address != user_badge_resource_address {
                 panic!("User does not exist!");
             };
             let pool_parameters = self.pool_parameters.get(&resource_address).unwrap().clone();
@@ -449,11 +463,9 @@ mod lending_protocol {
             }
 
             //TO DO: Go through all users resources and find ltv ratios
-            let mut ltv_ratios = HashMap::new();
-            ltv_ratios.insert(resource_address, Decimal::ONE);
-            let asset_ltv_ratio = ltv_ratios.get(&resource_address).unwrap().clone();
+            let asset_ltv_ratio = pool_parameters.ltv_ratio;
             let mut prices = HashMap::new();
-            for (&res_address, &_ratio) in &ltv_ratios {
+            for (&res_address, &_ratio) in &self.ltv_ratios {
                 let mut price_in_xrd = Decimal::ONE;
                 if res_address != XRD {
                     price_in_xrd = self.oracle_address.get_price_in_xrd(res_address);
@@ -496,6 +508,13 @@ mod lending_protocol {
             //TO DO: Update users NFT
             //user.on_withdraw(asset_address, amount_to_decrease);
             let amount_to_take = Decimal::one();
+            let non_fungible_id = user_badge
+                .check(manager_address)
+                .as_non_fungible()
+                .non_fungible_local_id();
+            let user: UserData = self
+                .user_resource_manager
+                .get_non_fungible_data(&non_fungible_id);
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -522,7 +541,9 @@ mod lending_protocol {
         ) -> Bucket {
             //Get user data
             let user_badge_resource_address = user_badge.resource_address();
-            if self.user_resource_manager.address() != user_badge_resource_address {
+            let manager_address = self.user_resource_manager.address();
+
+            if manager_address != user_badge_resource_address {
                 panic!("User does not exist!");
             };
             let pool_parameters = self.pool_parameters.get(&asset_address).unwrap().clone();
@@ -541,10 +562,8 @@ mod lending_protocol {
                 panic!("Max borrow amount is {}: ", borrowable_amount);
             }
 
-            let mut asset_ltv_ratios = HashMap::new();
-            asset_ltv_ratios.insert(asset_address, Decimal::one());
             let mut prices = HashMap::new();
-            for (&res_address, &_ratio) in &asset_ltv_ratios {
+            for (&res_address, &_ratio) in &self.ltv_ratios {
                 let mut price_in_xrd = Decimal::ONE;
                 if res_address != XRD {
                     price_in_xrd = self.oracle_address.get_price_in_xrd(res_address);
@@ -592,6 +611,13 @@ mod lending_protocol {
             user.on_borrow(asset_address, amount);*/
             let amount_to_take = Decimal::one();
             let reserve_amount = Decimal::one();
+            let non_fungible_id = user_badge
+                .check(manager_address)
+                .as_non_fungible()
+                .non_fungible_local_id();
+            let user: UserData = self
+                .user_resource_manager
+                .get_non_fungible_data(&non_fungible_id);
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -614,7 +640,9 @@ mod lending_protocol {
         pub fn repay(&mut self, repaid: Bucket, user_badge: Proof) /*-> Bucket*/
         {
             let user_badge_resource_address = user_badge.resource_address();
-            if self.user_resource_manager.address() != user_badge_resource_address {
+            let manager_address = self.user_resource_manager.address();
+
+            if manager_address != user_badge_resource_address {
                 panic!("User does not exist!");
             };
             let asset_address = repaid.resource_address();
@@ -646,6 +674,13 @@ mod lending_protocol {
             asset_total_borrow_balance += interests.0 - repaid.amount();
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
+            let non_fungible_id = user_badge
+                .check(manager_address)
+                .as_non_fungible()
+                .non_fungible_local_id();
+            let user: UserData = self
+                .user_resource_manager
+                .get_non_fungible_data(&non_fungible_id);
             //let to_return
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
@@ -748,7 +783,7 @@ mod lending_protocol {
             self.admin_signature_check = HashMap::new();
         }
 
-        fn get_id_from_proof(&mut self, user_badge: Proof) -> Decimal {
+        fn _get_id_from_proof(&mut self, user_badge: Proof) -> Decimal {
             let manager = ResourceManager::from(user_badge.resource_address());
             let non_fungible_id = user_badge
                 .check(manager.address())
@@ -761,6 +796,16 @@ mod lending_protocol {
             };
             let user_id_decimal = Decimal::from(user_id);
             user_id_decimal
+        }
+
+        fn _get_non_fungible_id_from_proof(&mut self, user_badge: Proof) -> NonFungibleLocalId {
+            let manager = ResourceManager::from(user_badge.resource_address());
+            let non_fungible_id = user_badge
+                .check(manager.address())
+                .as_non_fungible()
+                .non_fungible_local_id();
+
+            non_fungible_id
         }
 
         fn borrowable_amount(

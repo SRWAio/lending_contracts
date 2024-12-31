@@ -36,3 +36,52 @@ pub struct UserData {
     #[mutable]
     pub borrow_epoch: IndexMap<ResourceAddress, i64>,
 }
+
+impl UserData {
+    pub fn get_deposits(&self, resource_address: ResourceAddress) -> Decimal {
+        Self::get_value(&self.deposits, resource_address)
+    }
+
+    pub fn get_sr_deposits(&self, resource_address: ResourceAddress) -> Decimal {
+        Self::get_value(&self.sr_deposits, resource_address)
+    }
+
+    pub fn get_borrows(&self, resource_address: ResourceAddress) -> Decimal {
+        Self::get_value(&self.borrows, resource_address)
+    }
+
+    pub fn get_sr_borrows(&self, resource_address: ResourceAddress) -> Decimal {
+        Self::get_value(&self.sr_borrows, resource_address)
+    }
+
+    fn get_value(map: &IndexMap<ResourceAddress, Decimal>, key: ResourceAddress) -> Decimal {
+        map.get(&key).copied().unwrap_or(Decimal::ZERO)
+    }
+
+    pub fn update_deposit(&mut self, res_address: ResourceAddress, value: Decimal) {
+        Self::update_map(&mut self.deposits, res_address, value);
+    }
+
+    pub fn update_sr_deposit(&mut self, res_address: ResourceAddress, value: Decimal) {
+        Self::update_map(&mut self.sr_deposits, res_address, value);
+    }
+
+    pub fn update_borrow(&mut self, res_address: ResourceAddress, value: Decimal) {
+        Self::update_map(&mut self.borrows, res_address, value);
+    }
+
+    pub fn update_sr_borrow(&mut self, res_address: ResourceAddress, value: Decimal) {
+        Self::update_map(&mut self.sr_borrows, res_address, value);
+    }
+
+    fn update_map(
+        map: &mut IndexMap<ResourceAddress, Decimal>,
+        key: ResourceAddress,
+        units: Decimal,
+    ) {
+        if let Some(entry) = map.get_mut(&key) {
+            let new_deposit = *entry + units;
+            map.insert(key, new_deposit);
+        }
+    }
+}
