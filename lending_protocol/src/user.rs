@@ -74,6 +74,62 @@ impl UserData {
         Self::update_map(&mut self.sr_borrows, res_address, value);
     }
 
+    pub fn on_deposit(
+        &mut self,
+        resource_address: ResourceAddress,
+        deposit_increase: Decimal,
+        sr_deposit_increase: Decimal,
+    ) {
+        let mut deposit = self.get_deposits(resource_address);
+        deposit += deposit_increase;
+        let mut sr_deposit = self.get_sr_deposits(resource_address);
+        sr_deposit += sr_deposit_increase;
+        self.update_deposit(resource_address, deposit);
+        self.update_sr_deposit(resource_address, sr_deposit);
+    }
+
+    pub fn on_withdraw(
+        &mut self,
+        resource_address: ResourceAddress,
+        deposit_decrease: Decimal,
+        sr_deposit_decrease: Decimal,
+    ) {
+        let mut deposit = self.get_deposits(resource_address);
+        deposit -= deposit_decrease;
+        let mut sr_deposit = self.get_sr_deposits(resource_address);
+        sr_deposit -= sr_deposit_decrease;
+        self.update_deposit(resource_address, deposit);
+        self.update_sr_deposit(resource_address, sr_deposit);
+    }
+
+    pub fn on_borrow(
+        &mut self,
+        resource_address: ResourceAddress,
+        borrow_increase: Decimal,
+        sr_borrow_increase: Decimal,
+    ) {
+        let mut borrow = self.get_borrows(resource_address);
+        borrow += borrow_increase;
+        let mut sr_borrow = self.get_sr_borrows(resource_address);
+        sr_borrow += sr_borrow_increase;
+        self.update_borrow(resource_address, borrow);
+        self.update_sr_borrow(resource_address, sr_borrow);
+    }
+
+    pub fn on_repay(
+        &mut self,
+        resource_address: ResourceAddress,
+        borrow_decrease: Decimal,
+        sr_borrow_decrease: Decimal,
+    ) {
+        let mut borrow = self.get_borrows(resource_address);
+        borrow -= borrow_decrease;
+        let mut sr_borrow = self.get_sr_borrows(resource_address);
+        sr_borrow += sr_borrow_decrease;
+        self.update_borrow(resource_address, borrow);
+        self.update_sr_borrow(resource_address, sr_borrow);
+    }
+
     fn update_map(
         map: &mut IndexMap<ResourceAddress, Decimal>,
         key: ResourceAddress,

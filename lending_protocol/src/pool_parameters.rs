@@ -49,10 +49,7 @@ pub struct PoolParameters {
     pub balances_updated_at: u64,
 }
 impl PoolParameters {
-    pub fn get_pool_parameters(
-        &mut self,
-        asset_address: ResourceAddress,
-    ) -> (Decimal, Decimal, Decimal, Decimal, Decimal) {
+    pub fn _get_pool_parameters(&mut self) -> (Decimal, Decimal, Decimal, Decimal, Decimal) {
         info!("get_pool_parameters initiated.");
 
         (
@@ -85,7 +82,7 @@ impl PoolParameters {
         self.deposit_limit = pool_deposit_limit;
     }
 
-    pub fn update_balances(
+    pub fn _update_balances(
         &mut self,
         deposit_balance: Decimal,
         sd_balance: Decimal,

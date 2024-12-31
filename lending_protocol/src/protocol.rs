@@ -165,7 +165,6 @@ mod lending_protocol {
             let component_rule = rule!(require(global_caller(protocol_component_address)));
             // Admin will be able to create lending pools, update pool configurations and update operating status
             let admin_rule: AccessRule = rule!(require(admin_badge_address));
-            let user_resource_manager: NonFungibleResourceManager = user_badge_address.into();
             let protocol_rule: AccessRule = rule!(require(protocol_badge.resource_address()));
             let user_resource_manager: NonFungibleResourceManager = user_badge_address.into();
 
@@ -183,10 +182,8 @@ mod lending_protocol {
                 admin_rule: admin_rule.clone(),
                 admin_signature_check: HashMap::new(),
                 protocol_rule,
-                //oracle_address,
                 admin_badge_address,
                 admin_badge_id_counter: 5,
-                //assets_in_use,
                 assets_in_use: IndexSet::new(),
                 pool_parameters: HashMap::new(),
                 oracle_address,
@@ -220,7 +217,6 @@ mod lending_protocol {
         pub fn create_pool(
             &mut self,
             resource_address: ResourceAddress,
-            /*pool_parameters: PoolParameters,*/
         ) -> (Global<Pool>, ComponentAddress) {
             let pool_component_address =
                 Blueprint::<Pool>::instantiate(self.protocol_rule.clone(), resource_address);
@@ -412,9 +408,10 @@ mod lending_protocol {
                 .check(manager_address)
                 .as_non_fungible()
                 .non_fungible_local_id();
-            let user: UserData = self
+            let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
+            user.on_deposit(resource_address, asset_amount, sd_reward);
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -435,8 +432,6 @@ mod lending_protocol {
             &mut self,
             resource_address: ResourceAddress,
             amount: Decimal,
-            // Commented out for now, will be updated later
-            // sr_tokens: Bucket,
             user_badge: Proof,
         ) -> Bucket {
             //Get user badge
@@ -462,8 +457,7 @@ mod lending_protocol {
                 panic!("Max withdrawal amount (1) is {}: ", borrowable_amount);
             }
 
-            //TO DO: Go through all users resources and find ltv ratios
-            let asset_ltv_ratio = pool_parameters.ltv_ratio;
+            let _asset_ltv_ratio = pool_parameters.ltv_ratio;
             let mut prices = HashMap::new();
             for (&res_address, &_ratio) in &self.ltv_ratios {
                 let mut price_in_xrd = Decimal::ONE;
@@ -473,17 +467,18 @@ mod lending_protocol {
                 prices.insert(res_address, price_in_xrd);
             }
 
-            let user_available_collateral = Decimal::one();
+            /*let user_available_collateral = Decimal::one();
             let withdrawable_amount_in_xrd = user_available_collateral / asset_ltv_ratio;
             let cost_of_asset_in_terms_of_xrd = prices.get(&resource_address).unwrap();
             let withdrawable_amount = withdrawable_amount_in_xrd / *cost_of_asset_in_terms_of_xrd;
 
             if amount > withdrawable_amount {
                 panic!("Max withrawal amount is {}: ", withdrawable_amount);
-            }
+            }*/
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
+            let mut sr_deposit_balance = pool_parameters.sr_deposit_balance;
 
             let utilisation =
                 get_utilisation(asset_total_deposit_balance, asset_total_borrow_balance);
@@ -500,21 +495,21 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
+            let sd_reward =
+                calculate_sd_reward(amount, asset_total_deposit_balance, sr_deposit_balance);
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2 - amount;
+            sr_deposit_balance -= sd_reward;
 
-            let amount_to_decrease = amount - Decimal::one();
-            //TO DO: Update users NFT
-            //user.on_withdraw(asset_address, amount_to_decrease);
-            let amount_to_take = Decimal::one();
             let non_fungible_id = user_badge
                 .check(manager_address)
                 .as_non_fungible()
                 .non_fungible_local_id();
-            let user: UserData = self
+            let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
+            user.on_withdraw(resource_address, amount, sd_reward);
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -522,9 +517,9 @@ mod lending_protocol {
                 self.protocol_badge
                     .authorize_with_non_fungibles(&non_fungible_local_ids, || {
                         pool.take(
-                            amount_to_take,
+                            amount,
                             asset_total_deposit_balance,
-                            pool_parameters.sr_deposit_balance,
+                            sr_deposit_balance,
                             asset_total_borrow_balance,
                             pool_parameters.sr_borrow_balance,
                             asset_total_reserve_balance,
@@ -570,23 +565,23 @@ mod lending_protocol {
                 }
                 prices.insert(res_address, price_in_xrd);
             }
-            let cost_of_asset_in_terms_of_xrd = prices.get(&asset_address).unwrap();
+            let _cost_of_asset_in_terms_of_xrd = prices.get(&asset_address).unwrap();
 
-            let borrow_amount_in_terms_of_xrd = amount * *cost_of_asset_in_terms_of_xrd;
-            // Check if user has enough collateral
-            let user_available_collateral =
-                Decimal::one()/*calculations::calculate_available_collateral(&user, &asset_ltv_ratios, &prices)*/;
+            //let borrow_amount_in_terms_of_xrd = amount * *cost_of_asset_in_terms_of_xrd;
+            // TO DO: Implement calculate_available_collateral
+            /*let user_available_collateral =
+                calculations::calculate_available_collateral(&user, &asset_ltv_ratios, &prices);
             assert!(
                 user_available_collateral >= borrow_amount_in_terms_of_xrd,
                 "[borrow_asset][POOL] User does not have enough collateral. Requested loan with \
                   value of `{:?}` XRD but only has `{:?}` XRD of available collateral.",
                 borrow_amount_in_terms_of_xrd,
                 user_available_collateral
-            );
+            ); */
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
-
+            let mut sr_borrow_balance = pool_parameters.sr_borrow_balance;
             let utilisation =
                 get_utilisation(asset_total_deposit_balance, asset_total_borrow_balance);
             let borrow_rate = calculate_borrow_rate(
@@ -602,22 +597,23 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
+            let sr_borrow_interest = calculate_sb_interest(
+                amount,
+                asset_total_borrow_balance,
+                pool_parameters.sr_borrow_balance,
+            );
             asset_total_borrow_balance += interests.0 + amount;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
-            Decimal::one()/*calculations::calculate_r_deposit(r_borrow, reserve_factor, utilisation)*/;
-            /*let mut user = self.lending_address.get_user(user_id);
-            user.update_balances(asset_address, r_borrow, r_deposit);
-            user.on_borrow(asset_address, amount);*/
-            let amount_to_take = Decimal::one();
-            let reserve_amount = Decimal::one();
+            sr_borrow_balance += sr_borrow_interest;
             let non_fungible_id = user_badge
                 .check(manager_address)
                 .as_non_fungible()
                 .non_fungible_local_id();
-            let user: UserData = self
+            let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
+            user.on_borrow(asset_address, amount, amount);
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -625,11 +621,11 @@ mod lending_protocol {
                 self.protocol_badge
                     .authorize_with_non_fungibles(&non_fungible_local_ids, || {
                         pool.take(
-                            amount_to_take,
+                            amount,
                             asset_total_deposit_balance,
                             pool_parameters.sr_deposit_balance,
                             asset_total_borrow_balance,
-                            pool_parameters.sr_borrow_balance,
+                            sr_borrow_balance,
                             asset_total_reserve_balance,
                         )
                     });
@@ -655,7 +651,12 @@ mod lending_protocol {
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
-
+            let mut sr_borrow_balance = pool_parameters.sr_borrow_balance;
+            let sr_borrow_interest = calculate_sb_interest(
+                repaid.amount(),
+                asset_total_borrow_balance,
+                pool_parameters.sr_borrow_balance,
+            );
             let utilisation =
                 get_utilisation(asset_total_deposit_balance, asset_total_borrow_balance);
             let borrow_rate = calculate_borrow_rate(
@@ -671,16 +672,18 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
-            asset_total_borrow_balance += interests.0 - repaid.amount();
+            asset_total_borrow_balance -= interests.0 - repaid.amount();
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
-            let non_fungible_id = user_badge
+            sr_borrow_balance -= sr_borrow_interest;
+            let non_fungible_id: NonFungibleLocalId = user_badge
                 .check(manager_address)
                 .as_non_fungible()
                 .non_fungible_local_id();
-            let user: UserData = self
+            let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
+            user.on_repay(asset_address, repaid.amount(), sr_borrow_interest);
             //let to_return
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
@@ -692,7 +695,7 @@ mod lending_protocol {
                         asset_total_deposit_balance,
                         pool_parameters.sr_deposit_balance,
                         asset_total_borrow_balance,
-                        pool_parameters.sr_borrow_balance,
+                        sr_borrow_balance,
                         asset_total_reserve_balance,
                     )
                 });
