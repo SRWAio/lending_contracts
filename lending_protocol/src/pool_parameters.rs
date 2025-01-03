@@ -82,16 +82,18 @@ impl PoolParameters {
         self.deposit_limit = pool_deposit_limit;
     }
 
-    pub fn _update_balances(
+    pub fn update_balances(
         &mut self,
         deposit_balance: Decimal,
         sd_balance: Decimal,
         borrow_balance: Decimal,
         sb_balance: Decimal,
+        reserve_balance: Decimal,
     ) {
         self.deposit_balance = deposit_balance;
         self.sr_deposit_balance = sd_balance;
         self.borrow_balance = borrow_balance;
         self.sr_borrow_balance = sb_balance;
+        self.reserve_balance = reserve_balance;
     }
 }

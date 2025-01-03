@@ -261,8 +261,7 @@ mod lending_protocol {
         pub fn create_user_and_deposit(&mut self, asset: Bucket) -> NonFungibleBucket {
             let resource_address = asset.resource_address();
             let asset_amount = asset.amount();
-            let pool_parameters: &PoolParameters =
-                self.pool_parameters.get(&resource_address).unwrap();
+            let pool_parameters = self.pool_parameters.get(&resource_address).unwrap().clone();
 
             let deposit_locked = pool_parameters.deposit_locked;
             if deposit_locked {
@@ -334,6 +333,14 @@ mod lending_protocol {
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2 + asset_amount;
+            self.update_pool_balances(
+                resource_address,
+                asset_total_deposit_balance,
+                sr_deposit_balance,
+                asset_total_borrow_balance,
+                pool_parameters.sr_borrow_balance,
+                asset_total_reserve_balance,
+            );
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -355,8 +362,7 @@ mod lending_protocol {
             let resource_address = asset.resource_address();
             let asset_amount = asset.amount();
             let user_badge_resource_address = user_badge.resource_address();
-            let pool_parameters: &PoolParameters =
-                self.pool_parameters.get(&resource_address).unwrap();
+            let pool_parameters = self.pool_parameters.get(&resource_address).unwrap().clone();
 
             let deposit_locked = pool_parameters.deposit_locked;
             if deposit_locked {
@@ -404,6 +410,14 @@ mod lending_protocol {
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2 + asset_amount;
+            self.update_pool_balances(
+                resource_address,
+                asset_total_deposit_balance,
+                sr_deposit_balance,
+                asset_total_borrow_balance,
+                pool_parameters.sr_borrow_balance,
+                asset_total_reserve_balance,
+            );
             let non_fungible_id = user_badge
                 .check(manager_address)
                 .as_non_fungible()
@@ -501,7 +515,14 @@ mod lending_protocol {
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2 - amount;
             sr_deposit_balance -= sd_reward;
-
+            self.update_pool_balances(
+                resource_address,
+                asset_total_deposit_balance,
+                sr_deposit_balance,
+                asset_total_borrow_balance,
+                pool_parameters.sr_borrow_balance,
+                asset_total_reserve_balance,
+            );
             let non_fungible_id = user_badge
                 .check(manager_address)
                 .as_non_fungible()
@@ -606,6 +627,14 @@ mod lending_protocol {
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
             sr_borrow_balance += sr_borrow_interest;
+            self.update_pool_balances(
+                asset_address,
+                asset_total_deposit_balance,
+                pool_parameters.sr_deposit_balance,
+                asset_total_borrow_balance,
+                sr_borrow_balance,
+                asset_total_reserve_balance,
+            );
             let non_fungible_id = user_badge
                 .check(manager_address)
                 .as_non_fungible()
@@ -676,6 +705,14 @@ mod lending_protocol {
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
             sr_borrow_balance -= sr_borrow_interest;
+            self.update_pool_balances(
+                asset_address,
+                asset_total_deposit_balance,
+                pool_parameters.sr_deposit_balance,
+                asset_total_borrow_balance,
+                sr_borrow_balance,
+                asset_total_reserve_balance,
+            );
             let non_fungible_id: NonFungibleLocalId = user_badge
                 .check(manager_address)
                 .as_non_fungible()
@@ -782,6 +819,23 @@ mod lending_protocol {
                     pool_reserve,
                     pool_deposit_limit,
                 );
+
+            self.admin_signature_check = HashMap::new();
+        }
+
+        fn update_pool_balances(
+            &mut self,
+            resource_address: ResourceAddress,
+            deposit: Decimal,
+            sr_deposit: Decimal,
+            borrow: Decimal,
+            sr_borrow: Decimal,
+            reserve: Decimal,
+        ) {
+            self.pool_parameters
+                .get_mut(&resource_address)
+                .unwrap()
+                .update_balances(deposit, sr_deposit, borrow, sr_borrow, reserve);
 
             self.admin_signature_check = HashMap::new();
         }

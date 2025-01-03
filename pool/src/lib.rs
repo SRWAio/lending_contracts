@@ -101,14 +101,10 @@ mod pool {
             self.borrow = borrow;
             self.deposit = deposit;
             self.sr_deposit = sr_deposit;
-
             self.sr_borrow = sr_borrow;
             self.reserve = reserve;
-
+            self.updated_at = Runtime::current_epoch().number();
             self.liquidity_pool.put(bucket)
-
-            // If the semi-colon is omitted on the last line, the last value seen is automatically returned
-            // In this case, a bucket containing 1 HelloToken is returned
         }
     }
 }
