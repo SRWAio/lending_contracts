@@ -74,6 +74,7 @@ mod lending_protocol {
         pools: HashMap<ResourceAddress, Global<Pool>>,
         protocol_badge: NonFungibleVault,
         admin_rule: AccessRule,
+        component_rule: AccessRule,
         protocol_rule: AccessRule,
         assets_in_use: IndexSet<ResourceAddress>,
         oracle_address: Global<PriceOracle>,
@@ -124,6 +125,7 @@ mod lending_protocol {
                 pools: HashMap::new(),
                 user_resource_manager,
                 admin_rule: admin_rule.clone(),
+                component_rule: component_rule.clone(),
                 protocol_rule: protocol_rule,
                 admin_signature_check: HashMap::new(),
                 admin_badge_address: admin_badge.resource_address(),
@@ -180,6 +182,7 @@ mod lending_protocol {
                 pools: HashMap::new(),
                 user_resource_manager,
                 admin_rule: admin_rule.clone(),
+                component_rule: component_rule.clone(),
                 admin_signature_check: HashMap::new(),
                 protocol_rule,
                 admin_badge_address,
@@ -314,8 +317,8 @@ mod lending_protocol {
             deposits.insert(resource_address, asset_amount);
             let mut sr_deposits = IndexMap::new();
             sr_deposits.insert(resource_address, sd_reward);
-            let mut deposit_epoch = IndexMap::new();
-            deposit_epoch.insert(resource_address, now);
+            //let mut deposit_epoch = IndexMap::new();
+            //deposit_epoch.insert(resource_address, now);
 
             let data = UserData {
                 name: "User Badge".into(),
@@ -324,8 +327,8 @@ mod lending_protocol {
                 sr_deposits,
                 borrows: IndexMap::new(),
                 sr_borrows: IndexMap::new(),
-                deposit_epoch,
-                borrow_epoch: IndexMap::new(),
+                //deposit_epoch,
+                //borrow_epoch: IndexMap::new(),
                 minted_at: now,
                 updated_at: now,
             };
@@ -426,6 +429,21 @@ mod lending_protocol {
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
             user.on_deposit(resource_address, asset_amount, sd_reward);
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "deposits",
+                user.deposits,
+            );
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "sr_deposits",
+                user.sr_deposits,
+            );
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "updated_at",
+                Runtime::current_epoch().number(),
+            );
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -531,6 +549,21 @@ mod lending_protocol {
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
             user.on_withdraw(resource_address, amount, sd_reward);
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "deposits",
+                user.deposits,
+            );
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "sr_deposits",
+                user.sr_deposits,
+            );
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "updated_at",
+                Runtime::current_epoch().number(),
+            );
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -644,6 +677,21 @@ mod lending_protocol {
                 .get_non_fungible_data(&non_fungible_id);
             user.on_borrow(asset_address, amount, amount);
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "borrows",
+                user.deposits,
+            );
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "sr_borrows",
+                user.sr_deposits,
+            );
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "updated_at",
+                Runtime::current_epoch().number(),
+            );
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
             let borrowed_asset =
@@ -721,6 +769,21 @@ mod lending_protocol {
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
             user.on_repay(asset_address, repaid.amount(), sr_borrow_interest);
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "borrows",
+                user.deposits,
+            );
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "sr_borrows",
+                user.sr_deposits,
+            );
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "updated_at",
+                Runtime::current_epoch().number(),
+            );
             //let to_return
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =

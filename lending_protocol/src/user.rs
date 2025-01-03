@@ -24,17 +24,16 @@ pub struct UserData {
 
     #[mutable]
     pub sr_deposits: IndexMap<ResourceAddress, Decimal>,
-    #[mutable]
-    pub deposit_epoch: IndexMap<ResourceAddress, i64>,
-
+    /* #[mutable]
+    pub deposit_epoch: IndexMap<ResourceAddress, i64>,*/
     /// All users borrows.
     #[mutable]
     pub borrows: IndexMap<ResourceAddress, Decimal>,
 
     #[mutable]
     pub sr_borrows: IndexMap<ResourceAddress, Decimal>,
-    #[mutable]
-    pub borrow_epoch: IndexMap<ResourceAddress, i64>,
+    /* #[mutable]
+    pub borrow_epoch: IndexMap<ResourceAddress, i64>,*/
 }
 
 impl UserData {

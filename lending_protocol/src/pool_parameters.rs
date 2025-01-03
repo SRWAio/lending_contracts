@@ -95,5 +95,6 @@ impl PoolParameters {
         self.borrow_balance = borrow_balance;
         self.sr_borrow_balance = sb_balance;
         self.reserve_balance = reserve_balance;
+        self.balances_updated_at = Runtime::current_epoch().number();
     }
 }
