@@ -12,11 +12,11 @@ pub struct UserData {
     pub name: String,
 
     /// Badge minted at
-    pub minted_at: i64,
+    pub minted_at: u64,
 
     /// Badge updated at
     #[mutable]
-    pub updated_at: i64,
+    pub updated_at: u64,
 
     /// All users deposits.
     #[mutable]

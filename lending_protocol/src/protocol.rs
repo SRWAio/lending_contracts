@@ -312,7 +312,7 @@ mod lending_protocol {
             user_count += Decimal::one();
             let user_id_converted: u64 = user_count.try_into().unwrap();
             let user_id = NonFungibleLocalId::Integer(user_id_converted.into());
-            let now = Clock::current_time(TimePrecision::Second).seconds_since_unix_epoch;
+            let now = Runtime::current_epoch().number();
             let mut deposits = IndexMap::new();
             deposits.insert(resource_address, asset_amount);
             let mut sr_deposits = IndexMap::new();
@@ -680,12 +680,12 @@ mod lending_protocol {
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "borrows",
-                user.deposits,
+                user.borrows,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "sr_borrows",
-                user.sr_deposits,
+                user.sr_borrows,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
@@ -772,12 +772,12 @@ mod lending_protocol {
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "borrows",
-                user.deposits,
+                user.borrows,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "sr_borrows",
-                user.sr_deposits,
+                user.sr_borrows,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
