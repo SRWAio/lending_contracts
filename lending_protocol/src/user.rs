@@ -134,9 +134,8 @@ impl UserData {
         key: ResourceAddress,
         units: Decimal,
     ) {
-        if let Some(entry) = map.get_mut(&key) {
-            let new_deposit = *entry + units;
-            map.insert(key, new_deposit);
+        if let Some(_entry) = map.get_mut(&key) {
+            map.insert(key, units);
         }
     }
 }

@@ -317,6 +317,10 @@ mod lending_protocol {
             deposits.insert(resource_address, asset_amount);
             let mut sr_deposits = IndexMap::new();
             sr_deposits.insert(resource_address, sd_reward);
+            let mut sr_borrows = IndexMap::new();
+            sr_borrows.insert(resource_address, Decimal::zero());
+            let mut borrows = IndexMap::new();
+            borrows.insert(resource_address, Decimal::zero());
             //let mut deposit_epoch = IndexMap::new();
             //deposit_epoch.insert(resource_address, now);
 
@@ -325,8 +329,8 @@ mod lending_protocol {
                 image_url: "https://demo.srwa.io/images/badge.png".into(),
                 deposits,
                 sr_deposits,
-                borrows: IndexMap::new(),
-                sr_borrows: IndexMap::new(),
+                borrows,
+                sr_borrows,
                 //deposit_epoch,
                 //borrow_epoch: IndexMap::new(),
                 minted_at: now,
