@@ -9,7 +9,7 @@ mod lending_protocol {
 
     extern_blueprint! {
     // import the Pool package from the ledger using its package address
-    "package_tdx_2_1pkyaukzcnlcw2uvna5qkdgrans3duhsqahnxh86pugpsa4ml255knx",
+    "package_tdx_2_1pk2dgttfuun4qf7shskfx53pqs6um6psaefy4203guwr2fp9j83n83",
     Pool {
         fn instantiate(
             admin_rule: AccessRule,
@@ -34,7 +34,7 @@ mod lending_protocol {
     }
     extern_blueprint! {
     // import the PriceORacle package from the ledger using its package address
-    "package_tdx_2_1p5w9qvrjd0twmwqd5np9kzey688muve8q82ac3ftsq470xc2uxc44k",
+    "package_tdx_2_1ph0hwlqmde3ht29pzy5qehqflvjfrtty4lgyvwhhqp589e0v0qhtke",
     PriceOracle {
         // Blueprint Functions
         /*fn instantiate_owned(price: Decimal, component_address: ComponentAddress) -> Owned<Lending>;
