@@ -71,19 +71,19 @@ pub fn _calculate_sd_token_price(total_deposit: Decimal, total_sd: Decimal) -> D
     sd_price
 }
 
-pub fn calculate_sd_reward(
+pub fn calculate_sd_interest(
     deposit_amount: Decimal,
     total_deposit: Decimal,
     total_sd: Decimal,
 ) -> Decimal {
-    let sd_reward;
+    let sd_interest;
     if total_deposit == Decimal::zero() {
-        sd_reward = deposit_amount;
+        sd_interest = deposit_amount;
     } else {
         let sd_price = total_deposit / total_sd;
-        sd_reward = deposit_amount / sd_price;
+        sd_interest = deposit_amount / sd_price;
     }
-    sd_reward
+    sd_interest
 }
 
 pub fn calculate_sb_interest(

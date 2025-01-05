@@ -250,8 +250,6 @@ mod lending_protocol {
                 deposit_limit: dec!("10000"),
                 borrow_balance: Decimal::zero(),
                 deposit_balance: Decimal::zero(),
-                borrow_rate: Decimal::zero(),
-                deposit_rate: Decimal::zero(),
                 reserve_balance: Decimal::zero(),
                 sr_deposit_balance: Decimal::zero(),
                 sr_borrow_balance: Decimal::zero(),
@@ -299,7 +297,7 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
-            let sd_reward = calculate_sd_reward(
+            let sd_reward = calculate_sd_interest(
                 asset.amount(),
                 asset_total_deposit_balance,
                 sr_deposit_balance,
@@ -404,7 +402,7 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
-            let sd_reward = calculate_sd_reward(
+            let sd_reward = calculate_sd_interest(
                 asset.amount(),
                 asset_total_deposit_balance,
                 sr_deposit_balance,
@@ -532,7 +530,7 @@ mod lending_protocol {
                 pool_parameters.reserve_factor,
             );
             let sd_reward =
-                calculate_sd_reward(amount, asset_total_deposit_balance, sr_deposit_balance);
+                calculate_sd_interest(amount, asset_total_deposit_balance, sr_deposit_balance);
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2 - amount;
@@ -655,11 +653,8 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
-            let sr_borrow_interest = calculate_sb_interest(
-                amount,
-                asset_total_borrow_balance,
-                pool_parameters.sr_borrow_balance,
-            );
+            let sr_borrow_interest =
+                calculate_sb_interest(amount, asset_total_borrow_balance, sr_borrow_balance);
             asset_total_borrow_balance += interests.0 + amount;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
@@ -679,7 +674,7 @@ mod lending_protocol {
             let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
-            user.on_borrow(asset_address, amount, amount);
+            user.on_borrow(asset_address, amount, sr_borrow_interest);
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
@@ -736,7 +731,7 @@ mod lending_protocol {
             let sr_borrow_interest = calculate_sb_interest(
                 repaid.amount(),
                 asset_total_borrow_balance,
-                pool_parameters.sr_borrow_balance,
+                sr_borrow_balance,
             );
             let utilisation =
                 get_utilisation(asset_total_deposit_balance, asset_total_borrow_balance);
@@ -903,8 +898,6 @@ mod lending_protocol {
                 .get_mut(&resource_address)
                 .unwrap()
                 .update_balances(deposit, sr_deposit, borrow, sr_borrow, reserve);
-
-            self.admin_signature_check = HashMap::new();
         }
 
         fn _get_id_from_proof(&mut self, user_badge: Proof) -> Decimal {

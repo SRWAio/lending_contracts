@@ -124,7 +124,7 @@ impl UserData {
         let mut borrow = self.get_borrows(resource_address);
         borrow -= borrow_decrease;
         let mut sr_borrow = self.get_sr_borrows(resource_address);
-        sr_borrow += sr_borrow_decrease;
+        sr_borrow -= sr_borrow_decrease;
         self.update_borrow(resource_address, borrow);
         self.update_sr_borrow(resource_address, sr_borrow);
     }
