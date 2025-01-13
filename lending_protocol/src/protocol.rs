@@ -297,6 +297,8 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
+            asset_total_deposit_balance += interests.2 + asset_amount;
+
             let sd_reward = calculate_sd_interest(
                 asset.amount(),
                 asset_total_deposit_balance,
@@ -337,7 +339,6 @@ mod lending_protocol {
             let user = self.user_resource_manager.mint_non_fungible(&user_id, data);
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
-            asset_total_deposit_balance += interests.2 + asset_amount;
             self.update_pool_balances(
                 resource_address,
                 asset_total_deposit_balance,
@@ -402,6 +403,8 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
+            asset_total_deposit_balance += interests.2 + asset_amount;
+
             let sd_reward = calculate_sd_interest(
                 asset.amount(),
                 asset_total_deposit_balance,
@@ -414,7 +417,6 @@ mod lending_protocol {
             };
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
-            asset_total_deposit_balance += interests.2 + asset_amount;
             self.update_pool_balances(
                 resource_address,
                 asset_total_deposit_balance,
@@ -529,11 +531,11 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
+            asset_total_deposit_balance += interests.2 - amount;
             let sd_reward =
                 calculate_sd_interest(amount, asset_total_deposit_balance, sr_deposit_balance);
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
-            asset_total_deposit_balance += interests.2 - amount;
             sr_deposit_balance -= sd_reward;
             self.update_pool_balances(
                 resource_address,
@@ -653,9 +655,9 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
+            asset_total_borrow_balance += interests.0 + amount;
             let sr_borrow_interest =
                 calculate_sb_interest(amount, asset_total_borrow_balance, sr_borrow_balance);
-            asset_total_borrow_balance += interests.0 + amount;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
             sr_borrow_balance += sr_borrow_interest;
@@ -728,11 +730,6 @@ mod lending_protocol {
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
             let mut sr_borrow_balance = pool_parameters.sr_borrow_balance;
-            let sr_borrow_interest = calculate_sb_interest(
-                repaid.amount(),
-                asset_total_borrow_balance,
-                sr_borrow_balance,
-            );
             let utilisation =
                 get_utilisation(asset_total_deposit_balance, asset_total_borrow_balance);
             let borrow_rate = calculate_borrow_rate(
@@ -743,12 +740,19 @@ mod lending_protocol {
                 utilisation,
             );
             let borrow_apr = calculate_borrow_apr(borrow_rate, pool_parameters.balances_updated_at);
+
             let interests = calculate_interests(
                 asset_total_borrow_balance,
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
             asset_total_borrow_balance -= interests.0 - repaid.amount();
+            let sr_borrow_interest = calculate_sb_interest(
+                repaid.amount(),
+                asset_total_borrow_balance,
+                sr_borrow_balance,
+            );
+
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
             sr_borrow_balance -= sr_borrow_interest;
