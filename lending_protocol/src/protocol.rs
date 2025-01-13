@@ -297,7 +297,7 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
-            asset_total_deposit_balance += interests.2 + asset_amount;
+            asset_total_deposit_balance += interests.2;
 
             let sd_reward = calculate_sd_interest(
                 asset.amount(),
@@ -339,6 +339,7 @@ mod lending_protocol {
             let user = self.user_resource_manager.mint_non_fungible(&user_id, data);
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
+            asset_total_deposit_balance += asset_amount;
             self.update_pool_balances(
                 resource_address,
                 asset_total_deposit_balance,
@@ -403,7 +404,7 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
-            asset_total_deposit_balance += interests.2 + asset_amount;
+            asset_total_deposit_balance += interests.2;
 
             let sd_reward = calculate_sd_interest(
                 asset.amount(),
@@ -417,6 +418,8 @@ mod lending_protocol {
             };
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
+            asset_total_deposit_balance += asset_amount;
+
             self.update_pool_balances(
                 resource_address,
                 asset_total_deposit_balance,
@@ -531,11 +534,13 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
-            asset_total_deposit_balance += interests.2 - amount;
+            asset_total_deposit_balance += interests.2;
             let sd_reward =
                 calculate_sd_interest(amount, asset_total_deposit_balance, sr_deposit_balance);
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
+            asset_total_deposit_balance -= amount;
+
             sr_deposit_balance -= sd_reward;
             self.update_pool_balances(
                 resource_address,
@@ -655,11 +660,12 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
-            asset_total_borrow_balance += interests.0 + amount;
+            asset_total_borrow_balance += interests.0;
             let sr_borrow_interest =
                 calculate_sb_interest(amount, asset_total_borrow_balance, sr_borrow_balance);
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
+            asset_total_borrow_balance += amount;
             sr_borrow_balance += sr_borrow_interest;
             self.update_pool_balances(
                 asset_address,
@@ -746,7 +752,7 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
-            asset_total_borrow_balance -= interests.0 - repaid.amount();
+            asset_total_borrow_balance += interests.0;
             let sr_borrow_interest = calculate_sb_interest(
                 repaid.amount(),
                 asset_total_borrow_balance,
@@ -755,6 +761,7 @@ mod lending_protocol {
 
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
+            asset_total_borrow_balance -= repaid.amount();
             sr_borrow_balance -= sr_borrow_interest;
             self.update_pool_balances(
                 asset_address,
