@@ -175,7 +175,7 @@ mod lending_protocol {
                 user_resource_manager.set_burnable(component_rule.clone());
                 user_resource_manager.set_mintable(component_rule.clone());
             });
-
+            drop(admin_badge);
             // *  Instantiate our component with the previously created resources and addresses * //
             Self {
                 protocol_badge: NonFungibleVault::with_bucket(protocol_badge),
