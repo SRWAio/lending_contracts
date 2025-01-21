@@ -80,9 +80,10 @@ impl UserData {
         resource_address: ResourceAddress,
         deposit_increase: Decimal,
         sr_deposit_increase: Decimal,
+        sd_price: Decimal,
     ) {
         let mut deposit = self.get_deposits(resource_address);
-        deposit += deposit_increase + sr_deposit_increase;
+        deposit = deposit * sd_price + deposit_increase;
         let mut sr_deposit = self.get_deposit_position(resource_address);
         sr_deposit += sr_deposit_increase;
         self.update_deposit(resource_address, deposit);
@@ -94,9 +95,10 @@ impl UserData {
         resource_address: ResourceAddress,
         deposit_decrease: Decimal,
         sr_deposit_decrease: Decimal,
+        sd_price: Decimal,
     ) {
         let mut deposit = self.get_deposits(resource_address);
-        deposit -= deposit_decrease + sr_deposit_decrease;
+        deposit = deposit * sd_price - deposit_decrease;
         let mut sr_deposit = self.get_deposit_position(resource_address);
         sr_deposit -= sr_deposit_decrease;
         self.update_deposit(resource_address, deposit);
@@ -108,9 +110,10 @@ impl UserData {
         resource_address: ResourceAddress,
         borrow_increase: Decimal,
         sr_borrow_increase: Decimal,
+        sb_price: Decimal,
     ) {
         let mut borrow = self.get_borrows(resource_address);
-        borrow += borrow_increase + sr_borrow_increase;
+        borrow = borrow * sb_price + borrow_increase;
         let mut sr_borrow = self.get_borrow_position(resource_address);
         sr_borrow += sr_borrow_increase;
         self.update_borrow(resource_address, borrow);
@@ -122,9 +125,10 @@ impl UserData {
         resource_address: ResourceAddress,
         borrow_decrease: Decimal,
         sr_borrow_decrease: Decimal,
+        sb_price: Decimal,
     ) -> Decimal {
         let mut borrow = self.get_borrows(resource_address);
-        borrow -= borrow_decrease + sr_borrow_decrease;
+        borrow = borrow * sb_price - borrow_decrease;
         let mut sr_borrow = self.get_borrow_position(resource_address);
         sr_borrow -= sr_borrow_decrease;
         let mut to_return = Decimal::ZERO;

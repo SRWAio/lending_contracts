@@ -75,28 +75,30 @@ pub fn calculate_sd_interest(
     deposit_amount: Decimal,
     total_deposit: Decimal,
     total_sd: Decimal,
-) -> Decimal {
+) -> (Decimal, Decimal) {
     let sd_interest;
+    let mut sd_price = Decimal::zero();
     if total_deposit == Decimal::zero() {
         sd_interest = deposit_amount;
     } else {
-        let sd_price = total_deposit / total_sd;
+        sd_price = total_deposit / total_sd;
         sd_interest = deposit_amount / sd_price;
     }
-    sd_interest
+    (sd_interest, sd_price)
 }
 
 pub fn calculate_sb_interest(
     borrow_amount: Decimal,
     total_borrow: Decimal,
     total_sb: Decimal,
-) -> Decimal {
+) -> (Decimal, Decimal) {
     let sb_interest;
+    let mut sb_price = Decimal::zero();
     if total_borrow == Decimal::zero() {
         sb_interest = borrow_amount;
     } else {
-        let sb_price = total_borrow / total_sb;
+        sb_price = total_borrow / total_sb;
         sb_interest = borrow_amount / sb_price;
     }
-    sb_interest
+    (sb_interest, sb_price)
 }
