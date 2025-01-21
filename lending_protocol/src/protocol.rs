@@ -36,17 +36,9 @@ mod lending_protocol {
     // import the PriceORacle package from the ledger using its package address
     "package_tdx_2_1ph0hwlqmde3ht29pzy5qehqflvjfrtty4lgyvwhhqp589e0v0qhtke",
     PriceOracle {
-        // Blueprint Functions
-        /*fn instantiate_owned(price: Decimal, component_address: ComponentAddress) -> Owned<Lending>;
-        fn instantiate_global(price: Decimal) -> ( Global<Lending>, Bucket); */
-
         // Component Methods
         fn get_price(&mut self, res_addr: ResourceAddress) -> Decimal;
         fn get_price_in_xrd(&mut self, res_addr: ResourceAddress) -> Decimal;
-        //fn get_prices_in_xrd(&mut self) -> HashMap<ResourceAddress, Decimal>;
-        //fn get_all_prices(&mut self) -> HashMap<ResourceAddress, Decimal>;
-        //fn insert_to_liquidity_pool(&mut self, asset: Bucket);
-
         }
     }
 
@@ -158,24 +150,16 @@ mod lending_protocol {
             oracle_address: Global<PriceOracle>,
             protocol_badge: NonFungibleBucket,
             user_badge_address: ResourceAddress,
-            admin_badge: Proof,
+            admin_badge_address: ResourceAddress,
         ) {
             // Get address reservation for the lending market component
             let (protocol_component_address_reservation, protocol_component_address) =
                 Runtime::allocate_component_address(LendingProtocol::blueprint_id());
-            let admin_badge_address = admin_badge.resource_address();
             let component_rule = rule!(require(global_caller(protocol_component_address)));
             // Admin will be able to create lending pools, update pool configurations and update operating status
             let admin_rule: AccessRule = rule!(require(admin_badge_address));
             let protocol_rule: AccessRule = rule!(require(protocol_badge.resource_address()));
             let user_resource_manager: NonFungibleResourceManager = user_badge_address.into();
-
-            admin_badge.authorize(|| {
-                user_resource_manager.set_updatable_non_fungible_data(component_rule.clone());
-                user_resource_manager.set_burnable(component_rule.clone());
-                user_resource_manager.set_mintable(component_rule.clone());
-            });
-            drop(admin_badge);
             // *  Instantiate our component with the previously created resources and addresses * //
             Self {
                 protocol_badge: NonFungibleVault::with_bucket(protocol_badge),
@@ -315,24 +299,20 @@ mod lending_protocol {
             let now = Runtime::current_epoch().number();
             let mut deposits = IndexMap::new();
             deposits.insert(resource_address, asset_amount);
-            let mut sr_deposits = IndexMap::new();
-            sr_deposits.insert(resource_address, sd_reward);
-            let mut sr_borrows = IndexMap::new();
-            sr_borrows.insert(resource_address, Decimal::zero());
+            let mut deposit_position = IndexMap::new();
+            deposit_position.insert(resource_address, sd_reward);
+            let mut borrow_position = IndexMap::new();
+            borrow_position.insert(resource_address, Decimal::zero());
             let mut borrows = IndexMap::new();
             borrows.insert(resource_address, Decimal::zero());
-            //let mut deposit_epoch = IndexMap::new();
-            //deposit_epoch.insert(resource_address, now);
 
             let data = UserData {
                 name: "User Badge".into(),
                 image_url: "https://demo.srwa.io/images/badge.png".into(),
                 deposits,
-                sr_deposits,
+                deposit_position,
                 borrows,
-                sr_borrows,
-                //deposit_epoch,
-                //borrow_epoch: IndexMap::new(),
+                borrow_position,
                 minted_at: now,
                 updated_at: now,
             };
@@ -443,8 +423,8 @@ mod lending_protocol {
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
-                "sr_deposits",
-                user.sr_deposits,
+                "deposit_position",
+                user.deposit_position,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
@@ -486,17 +466,17 @@ mod lending_protocol {
                 panic!("Withdrawing is locked for now!");
             }
 
-            let borrowable_amount = self.borrowable_amount(
+            let withdrawable_amount = self.borrowable_amount(
                 pool_parameters.deposit_balance,
                 pool_parameters.borrow_balance,
                 pool_parameters.reserve_balance,
                 pool_parameters.pool_reserve,
             );
-            if borrowable_amount < amount {
-                panic!("Max withdrawal amount (1) is {}: ", borrowable_amount);
+            if withdrawable_amount < amount {
+                panic!("Max withdrawal amount is {}: ", withdrawable_amount);
             }
 
-            let _asset_ltv_ratio = pool_parameters.ltv_ratio;
+            let asset_ltv_ratio = pool_parameters.ltv_ratio;
             let mut prices = HashMap::new();
             for (&res_address, &_ratio) in &self.ltv_ratios {
                 let mut price_in_xrd = Decimal::ONE;
@@ -505,15 +485,22 @@ mod lending_protocol {
                 }
                 prices.insert(res_address, price_in_xrd);
             }
-
-            /*let user_available_collateral = Decimal::one();
+            let non_fungible_id = user_badge
+                .check(manager_address)
+                .as_non_fungible()
+                .non_fungible_local_id();
+            let mut user: UserData = self
+                .user_resource_manager
+                .get_non_fungible_data(&non_fungible_id);
+            let user_available_collateral =
+                user.calculate_total_collateral(&self.pool_parameters, prices.clone());
             let withdrawable_amount_in_xrd = user_available_collateral / asset_ltv_ratio;
             let cost_of_asset_in_terms_of_xrd = prices.get(&resource_address).unwrap();
             let withdrawable_amount = withdrawable_amount_in_xrd / *cost_of_asset_in_terms_of_xrd;
 
             if amount > withdrawable_amount {
                 panic!("Max withrawal amount is {}: ", withdrawable_amount);
-            }*/
+            }
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
@@ -550,13 +537,7 @@ mod lending_protocol {
                 pool_parameters.sr_borrow_balance,
                 asset_total_reserve_balance,
             );
-            let non_fungible_id = user_badge
-                .check(manager_address)
-                .as_non_fungible()
-                .non_fungible_local_id();
-            let mut user: UserData = self
-                .user_resource_manager
-                .get_non_fungible_data(&non_fungible_id);
+
             user.on_withdraw(resource_address, amount, sd_reward);
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
@@ -565,8 +546,8 @@ mod lending_protocol {
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
-                "sr_deposits",
-                user.sr_deposits,
+                "deposit_position",
+                user.deposit_position,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
@@ -628,19 +609,25 @@ mod lending_protocol {
                 }
                 prices.insert(res_address, price_in_xrd);
             }
-            let _cost_of_asset_in_terms_of_xrd = prices.get(&asset_address).unwrap();
+            let cost_of_asset_in_terms_of_xrd = prices.get(&asset_address).unwrap();
 
-            //let borrow_amount_in_terms_of_xrd = amount * *cost_of_asset_in_terms_of_xrd;
-            // TO DO: Implement calculate_available_collateral
-            /*let user_available_collateral =
-                calculations::calculate_available_collateral(&user, &asset_ltv_ratios, &prices);
+            let borrow_amount_in_terms_of_xrd = amount * *cost_of_asset_in_terms_of_xrd;
+            let non_fungible_id = user_badge
+                .check(manager_address)
+                .as_non_fungible()
+                .non_fungible_local_id();
+            let mut user: UserData = self
+                .user_resource_manager
+                .get_non_fungible_data(&non_fungible_id);
+            let user_available_collateral =
+                user.calculate_total_collateral(&self.pool_parameters, prices.clone());
             assert!(
                 user_available_collateral >= borrow_amount_in_terms_of_xrd,
                 "[borrow_asset][POOL] User does not have enough collateral. Requested loan with \
                   value of `{:?}` XRD but only has `{:?}` XRD of available collateral.",
                 borrow_amount_in_terms_of_xrd,
                 user_available_collateral
-            ); */
+            );
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
@@ -675,13 +662,7 @@ mod lending_protocol {
                 sr_borrow_balance,
                 asset_total_reserve_balance,
             );
-            let non_fungible_id = user_badge
-                .check(manager_address)
-                .as_non_fungible()
-                .non_fungible_local_id();
-            let mut user: UserData = self
-                .user_resource_manager
-                .get_non_fungible_data(&non_fungible_id);
+
             user.on_borrow(asset_address, amount, sr_borrow_interest);
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             self.user_resource_manager.update_non_fungible_data(
@@ -691,8 +672,8 @@ mod lending_protocol {
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
-                "sr_borrows",
-                user.sr_borrows,
+                "borrow_position",
+                user.borrow_position,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
@@ -717,8 +698,7 @@ mod lending_protocol {
             borrowed_asset
         }
 
-        pub fn repay(&mut self, repaid: Bucket, user_badge: Proof) /*-> Bucket*/
-        {
+        pub fn repay(&mut self, mut repaid: Bucket, user_badge: Proof) -> Bucket {
             let user_badge_resource_address = user_badge.resource_address();
             let manager_address = self.user_resource_manager.address();
 
@@ -778,7 +758,7 @@ mod lending_protocol {
             let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
-            user.on_repay(asset_address, repaid.amount(), sr_borrow_interest);
+            let to_return = user.on_repay(asset_address, repaid.amount(), sr_borrow_interest);
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "borrows",
@@ -786,15 +766,15 @@ mod lending_protocol {
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
-                "sr_borrows",
-                user.sr_borrows,
+                "borrow_position",
+                user.borrow_position,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "updated_at",
                 Runtime::current_epoch().number(),
             );
-            //let to_return
+            let return_bucket = repaid.take(to_return);
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -810,7 +790,7 @@ mod lending_protocol {
                     )
                 });
 
-            //to_return_amount
+            return_bucket
         }
         pub fn liquidate() {}
 
@@ -838,8 +818,6 @@ mod lending_protocol {
             if is_approved_by_admins == false {
                 panic!("Admin functions must be approved by at least 3 admins")
             }
-
-            // Mint
             let resource_manager = NonFungibleResourceManager::from(admin_badge.resource_address());
             let admin_badge_id_counter = self.admin_badge_id_counter;
             let new_id = admin_badge_id_counter + 1;
