@@ -283,13 +283,11 @@ mod lending_protocol {
             );
             asset_total_deposit_balance += interests.2;
 
-            let sd_interest_and_price = calculate_sd_interest(
+            let sd_interest = calculate_sd_interest(
                 asset.amount(),
                 asset_total_deposit_balance,
                 sr_deposit_balance,
             );
-            let sd_interest = sd_interest_and_price.0;
-
             sr_deposit_balance += sd_interest;
             let mut user_count = match self.user_resource_manager.total_supply() {
                 Some(value) => value,
@@ -300,11 +298,7 @@ mod lending_protocol {
             let user_id = NonFungibleLocalId::Integer(user_id_converted.into());
             let now = Runtime::current_epoch().number();
             let mut deposits = IndexMap::new();
-            deposits.insert(resource_address, asset_amount);
-            let mut deposit_position = IndexMap::new();
-            deposit_position.insert(resource_address, sd_interest);
-            let mut borrow_position = IndexMap::new();
-            borrow_position.insert(resource_address, Decimal::zero());
+            deposits.insert(resource_address, sd_interest);
             let mut borrows = IndexMap::new();
             borrows.insert(resource_address, Decimal::zero());
 
@@ -312,9 +306,7 @@ mod lending_protocol {
                 name: "User Badge".into(),
                 image_url: "https://demo.srwa.io/images/badge.png".into(),
                 deposits,
-                deposit_position,
                 borrows,
-                borrow_position,
                 minted_at: now,
                 updated_at: now,
             };
@@ -388,13 +380,11 @@ mod lending_protocol {
             );
             asset_total_deposit_balance += interests.2;
 
-            let sd_interest_and_price = calculate_sd_interest(
+            let sd_interest = calculate_sd_interest(
                 asset.amount(),
                 asset_total_deposit_balance,
                 sr_deposit_balance,
             );
-            let sd_interest = sd_interest_and_price.0;
-            let sd_price = sd_interest_and_price.1;
             sr_deposit_balance += sd_interest;
             let manager_address = self.user_resource_manager.address();
             if manager_address != user_badge_resource_address {
@@ -419,16 +409,11 @@ mod lending_protocol {
             let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
-            user.on_deposit(resource_address, asset_amount, sd_interest, sd_price);
+            user.on_deposit(resource_address, sd_interest);
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "deposits",
                 user.deposits,
-            );
-            self.user_resource_manager.update_non_fungible_data(
-                &non_fungible_id,
-                "deposit_position",
-                user.deposit_position,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
@@ -526,13 +511,11 @@ mod lending_protocol {
                 pool_parameters.reserve_factor,
             );
             asset_total_deposit_balance += interests.2;
-            let sd_interest_and_price =
+            let sd_interest =
                 calculate_sd_interest(amount, asset_total_deposit_balance, sr_deposit_balance);
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance -= amount;
-            let sd_interest = sd_interest_and_price.0;
-            let sd_price = sd_interest_and_price.1;
             sr_deposit_balance -= sd_interest;
             self.update_pool_balances(
                 resource_address,
@@ -543,16 +526,11 @@ mod lending_protocol {
                 asset_total_reserve_balance,
             );
 
-            user.on_withdraw(resource_address, amount, sd_interest, sd_price);
+            user.on_withdraw(resource_address, sd_interest);
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "deposits",
                 user.deposits,
-            );
-            self.user_resource_manager.update_non_fungible_data(
-                &non_fungible_id,
-                "deposit_position",
-                user.deposit_position,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
@@ -653,10 +631,8 @@ mod lending_protocol {
                 pool_parameters.reserve_factor,
             );
             asset_total_borrow_balance += interests.0;
-            let sb_interest_and_price =
+            let sb_interest =
                 calculate_sb_interest(amount, asset_total_borrow_balance, sr_borrow_balance);
-            let sb_interest = sb_interest_and_price.0;
-            let sb_price = sb_interest_and_price.1;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
             asset_total_borrow_balance += amount;
@@ -670,17 +646,12 @@ mod lending_protocol {
                 asset_total_reserve_balance,
             );
 
-            user.on_borrow(asset_address, amount, sb_interest, sb_price);
+            user.on_borrow(asset_address, sb_interest);
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "borrows",
                 user.borrows,
-            );
-            self.user_resource_manager.update_non_fungible_data(
-                &non_fungible_id,
-                "borrow_position",
-                user.borrow_position,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
@@ -740,13 +711,11 @@ mod lending_protocol {
                 pool_parameters.reserve_factor,
             );
             asset_total_borrow_balance += interests.0;
-            let sb_interest_and_price = calculate_sb_interest(
+            let sb_interest = calculate_sb_interest(
                 repaid.amount(),
                 asset_total_borrow_balance,
                 sr_borrow_balance,
             );
-            let sb_interest = sb_interest_and_price.0;
-            let sb_price = sb_interest_and_price.1;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
             asset_total_borrow_balance -= repaid.amount();
@@ -766,16 +735,11 @@ mod lending_protocol {
             let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
-            let to_return = user.on_repay(asset_address, repaid.amount(), sb_interest, sb_price);
+            let to_return = user.on_repay(asset_address, sb_interest);
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "borrows",
                 user.borrows,
-            );
-            self.user_resource_manager.update_non_fungible_data(
-                &non_fungible_id,
-                "borrow_position",
-                user.borrow_position,
             );
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
