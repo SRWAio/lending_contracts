@@ -57,6 +57,7 @@ mod lending_protocol {
             withdraw =>  PUBLIC;
             borrow =>  PUBLIC;
             repay => PUBLIC;
+            liquidate => restrict_to: [admin];
             insert_pool_component =>  PUBLIC;
             update_pool_parameters => restrict_to: [admin];
         }
@@ -764,7 +765,175 @@ mod lending_protocol {
 
             return_bucket
         }
-        pub fn liquidate() {}
+
+        pub fn liquidate(
+            &mut self,
+            user_id: Decimal,
+            mut repaid: Bucket,
+            deposited_asset: ResourceAddress,
+        ) -> (Bucket, Bucket) {
+            let is_approved_by_admins = self.is_approved_by_admins();
+            if is_approved_by_admins == false {
+                panic!("Admin functions must be approved by at least 3 admins")
+            }
+            self.admin_signature_check = HashMap::new();
+            let repaid_resource_address = repaid.resource_address();
+            let integer_user_id = user_id
+                .to_string()
+                .parse::<u64>()
+                .expect("Invalid decimal value");
+            let non_fungible_id = NonFungibleLocalId::Integer(integer_user_id.into());
+            // Get the user that is targeted for liquidation
+            let mut user: UserData = self
+                .user_resource_manager
+                .get_non_fungible_data(&non_fungible_id);
+            //TO DO: Calculate balance based on price
+            let liquidated_user_deposit_balance: Decimal = user.get_deposit(deposited_asset);
+            if liquidated_user_deposit_balance == Decimal::ZERO {
+                panic!("User deposit balance of selected token is 0.");
+            }
+            let repaid_pool_parameters = self
+                .pool_parameters
+                .get(&repaid_resource_address)
+                .unwrap()
+                .clone();
+
+            let mut prices = HashMap::new();
+            for (&res_address, &_ratio) in &self.ltv_ratios {
+                let mut price_in_xrd = Decimal::ONE;
+                if res_address != XRD {
+                    price_in_xrd = self.oracle_address.get_price_in_xrd(res_address);
+                }
+                prices.insert(res_address, price_in_xrd);
+            }
+            let loan_limit_used = user.get_loan_limit_used(&self.pool_parameters, prices.clone());
+
+            if loan_limit_used == Decimal::ZERO {
+                panic!("No borrow from the user");
+            }
+            let deposit_and_borrow_in_xrd =
+                user.get_deposit_and_borrow_balance_in_xrd(&self.pool_parameters, &prices);
+            let borrow_amount_in_xrd = deposit_and_borrow_in_xrd.1;
+
+            let deposit_amount_in_xrd = deposit_and_borrow_in_xrd.0;
+
+            let asset_min_liquidate_value = repaid_pool_parameters.min_liquidable_value;
+
+            let asset_max_liquidation_percent = repaid_pool_parameters.max_liquidation_percent;
+
+            let asset_liquidation_bonus = repaid_pool_parameters.liquidation_bonus;
+
+            let asset_liquidation_reserve_factor =
+                repaid_pool_parameters.liquidation_reserve_factor;
+
+            let repaid_asset_total_deposit_balance = repaid_pool_parameters.deposit_balance;
+            let repaid_asset_total_borrow_balance = repaid_pool_parameters.borrow_balance;
+
+            let asset_borrow_amount = user.get_borrow(repaid_resource_address);
+
+            let lending_parameters = self.pool_parameters.get(&deposited_asset).unwrap().clone();
+            let deposit_balance = lending_parameters.deposit_balance;
+            let borrow_balance = lending_parameters.borrow_balance;
+            let reserve_balance = lending_parameters.reserve_balance;
+            let pool_reserve = lending_parameters.pool_reserve;
+
+            let borrowable_amount = self.borrowable_amount(
+                deposit_balance,
+                borrow_balance,
+                reserve_balance,
+                pool_reserve,
+            );
+
+            let sb_price = calculate_token_price(
+                repaid_asset_total_deposit_balance,
+                repaid_asset_total_borrow_balance,
+            );
+            // Do the liquidation calculations and update the liquidated users state
+            let to_return_amounts = user.on_liquidate(
+                repaid.amount(),
+                repaid_resource_address,
+                borrow_amount_in_xrd,
+                deposit_amount_in_xrd,
+                asset_max_liquidation_percent,
+                asset_liquidation_bonus,
+                asset_liquidation_reserve_factor,
+                liquidated_user_deposit_balance,
+                deposited_asset,
+                prices,
+                asset_min_liquidate_value,
+                asset_borrow_amount,
+                borrowable_amount,
+                sb_price,
+            );
+
+            let reward = to_return_amounts.0;
+            let changes = to_return_amounts.1;
+            let platform_bonus = to_return_amounts.2;
+            let decreased_amount = to_return_amounts.3;
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "deposits",
+                user.deposits,
+            );
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "borrows",
+                user.borrows,
+            );
+            self.user_resource_manager.update_non_fungible_data(
+                &non_fungible_id,
+                "updated_at",
+                Runtime::current_epoch().number(),
+            );
+            let to_return_changes = repaid.take(changes);
+
+            let mut pool = self.pools.get(&deposited_asset).unwrap().clone();
+            let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
+                self.protocol_badge.non_fungible_local_ids(1);
+            let new_total_deposit = deposit_balance - reward - platform_bonus;
+            let new_total_sr_deposit =
+                lending_parameters.sr_deposit_balance - reward - platform_bonus;
+            let to_return_reward =
+                self.protocol_badge
+                    .authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                        pool.take(
+                            reward,
+                            new_total_deposit,
+                            new_total_sr_deposit,
+                            borrow_balance,
+                            lending_parameters.sr_borrow_balance,
+                            reserve_balance + platform_bonus,
+                        )
+                    });
+
+            if repaid.resource_address() == deposited_asset {
+                self.protocol_badge
+                    .authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                        pool.put(
+                            repaid,
+                            new_total_deposit,
+                            new_total_sr_deposit,
+                            repaid_asset_total_borrow_balance - decreased_amount,
+                            repaid_pool_parameters.sr_borrow_balance - decreased_amount,
+                            reserve_balance + platform_bonus,
+                        )
+                    });
+            } else {
+                let mut borrowed_pool = self.pools.get(&repaid.resource_address()).unwrap().clone();
+                self.protocol_badge
+                    .authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                        borrowed_pool.put(
+                            repaid,
+                            repaid_asset_total_deposit_balance,
+                            repaid_pool_parameters.sr_deposit_balance,
+                            repaid_asset_total_borrow_balance - decreased_amount,
+                            repaid_pool_parameters.sr_borrow_balance - decreased_amount,
+                            repaid_pool_parameters.reserve_balance + platform_bonus,
+                        )
+                    });
+            }
+            (to_return_reward, to_return_changes)
+        }
 
         pub fn approve_admin_functions(&mut self, admin_badge: Proof) {
             let manager = ResourceManager::from(admin_badge.resource_address());
