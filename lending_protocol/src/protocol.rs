@@ -769,9 +769,9 @@ mod lending_protocol {
         pub fn liquidate(
             &mut self,
             user_id: Decimal,
-            mut repaid: Bucket,
+            repaid: Bucket,
             deposited_asset: ResourceAddress,
-        ) -> (Bucket, Bucket) {
+        ) -> Bucket {
             let is_approved_by_admins = self.is_approved_by_admins();
             if is_approved_by_admins == false {
                 panic!("Admin functions must be approved by at least 3 admins")
@@ -867,9 +867,8 @@ mod lending_protocol {
             );
 
             let reward = to_return_amounts.0;
-            let changes = to_return_amounts.1;
-            let platform_bonus = to_return_amounts.2;
-            let decreased_amount = to_return_amounts.3;
+            let platform_bonus = to_return_amounts.1;
+            let decreased_amount = to_return_amounts.2;
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "deposits",
@@ -885,8 +884,6 @@ mod lending_protocol {
                 "updated_at",
                 Runtime::current_epoch().number(),
             );
-            let to_return_changes = repaid.take(changes);
-
             let mut pool = self.pools.get(&deposited_asset).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
@@ -932,7 +929,7 @@ mod lending_protocol {
                         )
                     });
             }
-            (to_return_reward, to_return_changes)
+            to_return_reward
         }
 
         pub fn approve_admin_functions(&mut self, admin_badge: Proof) {
