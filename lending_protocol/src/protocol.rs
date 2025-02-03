@@ -828,6 +828,7 @@ mod lending_protocol {
 
             let repaid_asset_total_deposit_balance = repaid_pool_parameters.deposit_balance;
             let repaid_asset_total_borrow_balance = repaid_pool_parameters.borrow_balance;
+            let repaid_asset_total_sr_borrow_balance = repaid_pool_parameters.sr_borrow_balance;
 
             let asset_borrow_amount = user.get_borrow(repaid_resource_address);
 
@@ -845,8 +846,8 @@ mod lending_protocol {
             );
 
             let sb_price = calculate_token_price(
-                repaid_asset_total_deposit_balance,
                 repaid_asset_total_borrow_balance,
+                repaid_asset_total_sr_borrow_balance,
             );
             // Do the liquidation calculations and update the liquidated users state
             let to_return_amounts = user.on_liquidate(
