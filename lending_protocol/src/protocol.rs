@@ -60,6 +60,7 @@ mod lending_protocol {
             liquidate => restrict_to: [admin];
             insert_pool_component =>  PUBLIC;
             update_pool_parameters => restrict_to: [admin];
+            update_balances => restrict_to: [admin];
         }
     }
 
@@ -200,6 +201,36 @@ mod lending_protocol {
             pool_component: Global<Pool>,
         ) {
             self.pools.insert(resource_address, pool_component);
+            let now = Runtime::current_epoch().number();
+
+            let data = PoolParameters {
+                balances_updated_at: now,
+                base: dec!("0.001"),
+                min_collateral_ratio: Decimal::one(),
+                max_borrow_percent: dec!("0.1"),
+                max_liquidation_percent: dec!("0.5"),
+                liquidation_bonus: dec!("0.1"),
+                ltv_ratio: dec!("0.5"),
+                multiplier: dec!("10"),
+                base_multiplier: dec!("0.03"),
+                reserve_factor: Decimal::zero(),
+                kink: dec!("0.7"),
+                liquidation_reserve_factor: dec!("0.2"),
+                min_liquidable_value: dec!("6000"),
+                deposit_locked: false,
+                borrow_locked: false,
+                withdraw_locked: false,
+                repay_locked: false,
+                pool_reserve: dec!("0.2"),
+                deposit_limit: dec!("10000"),
+                borrow_balance: Decimal::zero(),
+                deposit_balance: Decimal::zero(),
+                reserve_balance: Decimal::zero(),
+                sr_deposit_balance: Decimal::zero(),
+                sr_borrow_balance: Decimal::zero(),
+            };
+
+            self.pool_parameters.insert(resource_address, data);
         }
 
         pub fn create_pool(
@@ -776,7 +807,6 @@ mod lending_protocol {
             if is_approved_by_admins == false {
                 panic!("Admin functions must be approved by at least 3 admins")
             }
-            self.admin_signature_check = HashMap::new();
             let repaid_resource_address = repaid.resource_address();
             let integer_user_id = user_id
                 .to_string()
@@ -903,8 +933,24 @@ mod lending_protocol {
                             reserve_balance + platform_bonus,
                         )
                     });
+            self.update_pool_balances(
+                deposited_asset,
+                new_total_deposit,
+                new_total_sr_deposit,
+                borrow_balance,
+                lending_parameters.sr_borrow_balance,
+                reserve_balance + platform_bonus,
+            );
 
             if repaid.resource_address() == deposited_asset {
+                self.update_pool_balances(
+                    deposited_asset,
+                    new_total_deposit,
+                    new_total_sr_deposit,
+                    repaid_asset_total_borrow_balance - decreased_amount,
+                    repaid_pool_parameters.sr_borrow_balance - decreased_amount,
+                    reserve_balance + platform_bonus,
+                );
                 self.protocol_badge
                     .authorize_with_non_fungibles(&non_fungible_local_ids, || {
                         pool.put(
@@ -917,7 +963,15 @@ mod lending_protocol {
                         )
                     });
             } else {
-                let mut borrowed_pool = self.pools.get(&repaid.resource_address()).unwrap().clone();
+                let mut borrowed_pool = self.pools.get(&repaid_resource_address).unwrap().clone();
+                self.update_pool_balances(
+                    repaid_resource_address,
+                    repaid_asset_total_deposit_balance,
+                    repaid_pool_parameters.sr_deposit_balance,
+                    repaid_asset_total_borrow_balance - decreased_amount,
+                    repaid_pool_parameters.sr_borrow_balance - decreased_amount,
+                    repaid_pool_parameters.reserve_balance + platform_bonus,
+                );
                 self.protocol_badge
                     .authorize_with_non_fungibles(&non_fungible_local_ids, || {
                         borrowed_pool.put(
@@ -930,6 +984,8 @@ mod lending_protocol {
                         )
                     });
             }
+            self.admin_signature_check = HashMap::new();
+
             to_return_reward
         }
 
@@ -1014,6 +1070,21 @@ mod lending_protocol {
         }
 
         fn update_pool_balances(
+            &mut self,
+            resource_address: ResourceAddress,
+            deposit: Decimal,
+            sr_deposit: Decimal,
+            borrow: Decimal,
+            sr_borrow: Decimal,
+            reserve: Decimal,
+        ) {
+            self.pool_parameters
+                .get_mut(&resource_address)
+                .unwrap()
+                .update_balances(deposit, sr_deposit, borrow, sr_borrow, reserve);
+        }
+
+        pub fn update_balances(
             &mut self,
             resource_address: ResourceAddress,
             deposit: Decimal,
