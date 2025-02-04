@@ -61,6 +61,7 @@ mod lending_protocol {
             insert_pool_component =>  PUBLIC;
             update_pool_parameters => restrict_to: [admin];
             update_balances => restrict_to: [admin];
+            update_pool_settings => restrict_to: [admin];
         }
     }
 
@@ -841,6 +842,14 @@ mod lending_protocol {
             if loan_limit_used == Decimal::ZERO {
                 panic!("No borrow from the user");
             }
+            let lending_parameters = self.pool_parameters.get(&deposited_asset).unwrap().clone();
+
+            let min_collateral_ratio = lending_parameters.min_collateral_ratio;
+
+            assert!(
+                loan_limit_used > min_collateral_ratio,
+                "Liquidation not allowed."
+            );
             let deposit_and_borrow_in_xrd =
                 user.get_deposit_and_borrow_balance_in_xrd(&self.pool_parameters, &prices);
             let borrow_amount_in_xrd = deposit_and_borrow_in_xrd.1;
@@ -862,7 +871,6 @@ mod lending_protocol {
 
             let asset_borrow_amount = user.get_borrow(repaid_resource_address);
 
-            let lending_parameters = self.pool_parameters.get(&deposited_asset).unwrap().clone();
             let deposit_balance = lending_parameters.deposit_balance;
             let borrow_balance = lending_parameters.borrow_balance;
             let reserve_balance = lending_parameters.reserve_balance;
@@ -1064,6 +1072,36 @@ mod lending_protocol {
                     min_collateral_ratio,
                     pool_reserve,
                     pool_deposit_limit,
+                );
+
+            self.admin_signature_check = HashMap::new();
+        }
+
+        pub fn update_pool_settings(
+            &mut self,
+            resource_address: ResourceAddress,
+            base: Decimal,
+            base_multiplier: Decimal,
+            multiplier: Decimal,
+            kink: Decimal,
+            reserve_factor: Decimal,
+            ltv_ratio: Decimal,
+        ) {
+            info!("update_pool_parameters initiated.");
+            let is_approved_by_admins = self.is_approved_by_admins();
+            if is_approved_by_admins == false {
+                panic!("Admin functions must be approved by at least 3 admins")
+            }
+            self.pool_parameters
+                .get_mut(&resource_address)
+                .unwrap()
+                .update_pool_settings(
+                    base,
+                    base_multiplier,
+                    multiplier,
+                    kink,
+                    reserve_factor,
+                    ltv_ratio,
                 );
 
             self.admin_signature_check = HashMap::new();

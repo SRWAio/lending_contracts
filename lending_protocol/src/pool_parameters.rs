@@ -80,6 +80,23 @@ impl PoolParameters {
         self.deposit_limit = pool_deposit_limit;
     }
 
+    pub fn update_pool_settings(
+        &mut self,
+        base: Decimal,
+        base_multiplier: Decimal,
+        multiplier: Decimal,
+        kink: Decimal,
+        reserve_factor: Decimal,
+        ltv_ratio: Decimal,
+    ) {
+        self.base = base;
+        self.base_multiplier = base_multiplier;
+        self.multiplier = multiplier;
+        self.kink = kink;
+        self.reserve_factor = reserve_factor;
+        self.ltv_ratio = ltv_ratio;
+    }
+
     pub fn update_balances(
         &mut self,
         deposit_balance: Decimal,
