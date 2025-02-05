@@ -184,7 +184,7 @@ impl UserData {
         let mut reward = amount * (1 + liquidation_bonus * (1 - liquidation_reserve_factor));
         reward /= *cost_of_deposit_asset_in_terms_of_xrd;
         platform_bonus /= *cost_of_deposit_asset_in_terms_of_xrd;
-
+        liquidated_user_deposit_balance /= *cost_of_deposit_asset_in_terms_of_xrd;
         let users_new_deposit_balance = liquidated_user_deposit_balance - reward - platform_bonus;
         self.update_deposit(deposit_asset_address, users_new_deposit_balance);
         let mut decreased_amount = amount - interest;
