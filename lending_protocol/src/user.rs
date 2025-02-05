@@ -96,7 +96,9 @@ impl UserData {
         let sr_borrow = self.get_borrow(resource_address);
         // Increase borrow balance by interests accrued
         let mut new_sr_borrow = sr_borrow * sb_price;
-        let interest = new_sr_borrow - sr_borrow;
+        let mut interest = new_sr_borrow - sr_borrow;
+        interest *= cost_of_asset_in_terms_of_xrd;
+        new_sr_borrow *= cost_of_asset_in_terms_of_xrd;
         // Repay the loan
         if new_sr_borrow < amount {
             panic!("Amount is greater than borrow balance");
@@ -120,8 +122,8 @@ impl UserData {
         mut liquidated_user_deposit_balance: Decimal,
         deposit_asset_address: ResourceAddress,
         prices: HashMap<ResourceAddress, Decimal>,
-        asset_min_liquidate_value: Decimal,
-        mut asset_borrow_amount: Decimal,
+        //asset_min_liquidate_value: Decimal,
+        asset_borrow_amount: Decimal,
         borrowable_amount: Decimal,
         sb_price: Decimal,
     ) -> (Decimal, Decimal, Decimal) {
@@ -130,17 +132,17 @@ impl UserData {
         let cost_of_repaid_asset_in_terms_of_xrd = prices.get(&repaid_asset_address).unwrap();
         let borrowable_amount_in_terms_of_xrd =
             borrowable_amount * *cost_of_deposit_asset_in_terms_of_xrd;
-        let max_repayment;
         //for unsolvent users
         if borrow_amount > deposit_amount {
             max_liquidation_percent = Decimal::ONE;
         }
-        if asset_borrow_amount < asset_min_liquidate_value {
+        //TO DO: REMOVE
+        /*if asset_borrow_amount < asset_min_liquidate_value {
             asset_borrow_amount *= *cost_of_repaid_asset_in_terms_of_xrd;
             max_repayment = asset_borrow_amount;
-        } else {
-            max_repayment = max_liquidation_percent * borrow_amount;
-        }
+        } else {*/
+        let max_repayment = max_liquidation_percent * borrow_amount;
+        //}
         amount *= *cost_of_repaid_asset_in_terms_of_xrd;
         if amount > borrowable_amount_in_terms_of_xrd {
             panic!("Amount is greater than max borrowable amount");

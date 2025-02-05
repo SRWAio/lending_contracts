@@ -856,7 +856,7 @@ mod lending_protocol {
 
             let deposit_amount_in_xrd = deposit_and_borrow_in_xrd.0;
 
-            let asset_min_liquidate_value = repaid_pool_parameters.min_liquidable_value;
+            //let asset_min_liquidate_value = repaid_pool_parameters.min_liquidable_value;
 
             let asset_max_liquidation_percent = repaid_pool_parameters.max_liquidation_percent;
 
@@ -899,7 +899,7 @@ mod lending_protocol {
                 liquidated_user_deposit_balance,
                 deposited_asset,
                 prices,
-                asset_min_liquidate_value,
+                //asset_min_liquidate_value,
                 asset_borrow_amount,
                 borrowable_amount,
                 sb_price,
