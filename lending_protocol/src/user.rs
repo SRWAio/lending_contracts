@@ -133,7 +133,7 @@ impl UserData {
         let borrowable_amount_in_terms_of_xrd =
             borrowable_amount * *cost_of_deposit_asset_in_terms_of_xrd;
         //for unsolvent users
-        if borrow_amount > deposit_amount {
+        if borrow_amount * (1 + liquidation_bonus) > deposit_amount {
             max_liquidation_percent = Decimal::ONE;
         }
         //TO DO: REMOVE
@@ -172,9 +172,9 @@ impl UserData {
         );
 
         //unsolvent user
-        if borrow_amount > deposit_amount {
+        /*if borrow_amount > deposit_amount {
             liquidation_reserve_factor = Decimal::ONE;
-        }
+        }*/
         // Platform is getting the liquidation fee
         let mut platform_bonus = amount * liquidation_bonus * liquidation_reserve_factor;
         if liquidated_user_deposit_balance == Decimal::ZERO {
