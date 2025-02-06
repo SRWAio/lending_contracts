@@ -929,6 +929,10 @@ mod lending_protocol {
             let new_total_deposit = deposit_balance - reward - platform_bonus;
             let new_total_sr_deposit =
                 lending_parameters.sr_deposit_balance - reward - platform_bonus;
+            let new_repaid_asset_total_borrow_balance =
+                repaid_asset_total_borrow_balance - decreased_amount;
+            let new_repaid_sr_borrow_balance =
+                repaid_asset_total_sr_borrow_balance - decreased_amount;
             let to_return_reward =
                 self.protocol_badge
                     .authorize_with_non_fungibles(&non_fungible_local_ids, || {
@@ -955,8 +959,8 @@ mod lending_protocol {
                     deposited_asset,
                     new_total_deposit,
                     new_total_sr_deposit,
-                    repaid_asset_total_borrow_balance - decreased_amount,
-                    repaid_pool_parameters.sr_borrow_balance - decreased_amount,
+                    new_repaid_asset_total_borrow_balance,
+                    new_repaid_sr_borrow_balance,
                     reserve_balance + platform_bonus,
                 );
                 self.protocol_badge
@@ -965,20 +969,21 @@ mod lending_protocol {
                             repaid,
                             new_total_deposit,
                             new_total_sr_deposit,
-                            repaid_asset_total_borrow_balance - decreased_amount,
-                            repaid_pool_parameters.sr_borrow_balance - decreased_amount,
+                            new_repaid_asset_total_borrow_balance,
+                            new_repaid_sr_borrow_balance,
                             reserve_balance + platform_bonus,
                         )
                     });
             } else {
                 let mut borrowed_pool = self.pools.get(&repaid_resource_address).unwrap().clone();
+
                 self.update_pool_balances(
                     repaid_resource_address,
                     repaid_asset_total_deposit_balance,
                     repaid_pool_parameters.sr_deposit_balance,
-                    repaid_asset_total_borrow_balance - decreased_amount,
-                    repaid_pool_parameters.sr_borrow_balance - decreased_amount,
-                    repaid_pool_parameters.reserve_balance + platform_bonus,
+                    new_repaid_asset_total_borrow_balance,
+                    new_repaid_sr_borrow_balance,
+                    repaid_pool_parameters.reserve_balance,
                 );
                 self.protocol_badge
                     .authorize_with_non_fungibles(&non_fungible_local_ids, || {
@@ -986,9 +991,9 @@ mod lending_protocol {
                             repaid,
                             repaid_asset_total_deposit_balance,
                             repaid_pool_parameters.sr_deposit_balance,
-                            repaid_asset_total_borrow_balance - decreased_amount,
-                            repaid_pool_parameters.sr_borrow_balance - decreased_amount,
-                            repaid_pool_parameters.reserve_balance + platform_bonus,
+                            new_repaid_asset_total_borrow_balance,
+                            new_repaid_sr_borrow_balance,
+                            repaid_pool_parameters.reserve_balance,
                         )
                     });
             }
