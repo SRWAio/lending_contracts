@@ -58,7 +58,8 @@ mod lending_protocol {
             borrow =>  PUBLIC;
             repay => PUBLIC;
             liquidate => restrict_to: [admin];
-            insert_pool_component =>  PUBLIC;
+            collect_reserve_balance => restrict_to: [admin];
+            insert_pool_component =>  restrict_to: [admin];
             update_pool_parameters => restrict_to: [admin];
             update_balances => restrict_to: [admin];
             update_pool_settings => restrict_to: [admin];
@@ -1000,6 +1001,50 @@ mod lending_protocol {
             self.admin_signature_check = HashMap::new();
 
             to_return_reward
+        }
+
+        pub fn collect_reserve_balance(
+            &mut self,
+            resource_address: ResourceAddress,
+            amount: Decimal,
+        ) -> Bucket {
+            let is_approved_by_admins = self.is_approved_by_admins();
+            if is_approved_by_admins == false {
+                panic!("Admin functions must be approved by at least 3 admins")
+            }
+            info!("collect_reserve_balance initiated.");
+            let pool_parameters = self.pool_parameters.get(&resource_address).unwrap().clone();
+            let mut reserve_balance = pool_parameters.reserve_balance;
+
+            if amount > reserve_balance {
+                panic!("Available reserve balance is: {}", reserve_balance);
+            }
+            reserve_balance -= amount;
+            let mut pool = self.pools.get(&resource_address).unwrap().clone();
+            let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
+                self.protocol_badge.non_fungible_local_ids(1);
+            let reserve_bucket =
+                self.protocol_badge
+                    .authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                        pool.take(
+                            amount,
+                            pool_parameters.deposit_balance,
+                            pool_parameters.sr_deposit_balance,
+                            pool_parameters.borrow_balance,
+                            pool_parameters.sr_borrow_balance,
+                            reserve_balance,
+                        )
+                    });
+            self.update_pool_balances(
+                resource_address,
+                pool_parameters.deposit_balance,
+                pool_parameters.sr_deposit_balance,
+                pool_parameters.borrow_balance,
+                pool_parameters.sr_borrow_balance,
+                reserve_balance,
+            );
+            self.admin_signature_check = HashMap::new();
+            reserve_bucket
         }
 
         pub fn approve_admin_functions(&mut self, admin_badge: Proof) {

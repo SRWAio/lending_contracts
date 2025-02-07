@@ -118,7 +118,7 @@ impl UserData {
         deposit_amount: Decimal,
         mut max_liquidation_percent: Decimal,
         liquidation_bonus: Decimal,
-        mut liquidation_reserve_factor: Decimal,
+        liquidation_reserve_factor: Decimal,
         mut liquidated_user_deposit_balance: Decimal,
         deposit_asset_address: ResourceAddress,
         prices: HashMap<ResourceAddress, Decimal>,
