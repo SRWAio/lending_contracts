@@ -7,10 +7,9 @@ mod pool {
             admin => updatable_by: [];
         },
         methods {
-            deposit => restrict_to :[admin];
-            withdraw => restrict_to :[admin];
             take => restrict_to :[admin];
             put => restrict_to :[admin];
+            get_pool_balances => PUBLIC;
         }
     }
 
@@ -32,9 +31,6 @@ mod pool {
         ) -> (Global<Pool>, ComponentAddress) {
             let (address_reservation, component_address) =
                 Runtime::allocate_component_address(Pool::blueprint_id());
-
-            let component_rule = rule!(require(global_caller(component_address)));
-
             // Instantiate a pool_component
             let pool_component = Self {
                 liquidity_pool: Vault::new(resource_address),
@@ -55,21 +51,6 @@ mod pool {
             (pool_component, component_address)
         }
 
-        // This is a method, because it needs a reference to self.  Methods can only be called on components
-        pub fn deposit(&mut self) {
-            // If the semi-colon is omitted on the last line, the last value seen is automatically returned
-            // In this case, a bucket containing 1 HelloToken is returned
-            info!("Deposit initiated.");
-        }
-
-        // This is a method, because it needs a reference to self.  Methods can only be called on components
-        pub fn withdraw(&mut self) {
-            // If the semi-colon is omitted on the last line, the last value seen is automatically returned
-            // In this case, a bucket containing 1 HelloToken is returned
-            info!("Deposit initiated.");
-        }
-
-        // This is a method, because it needs a reference to self.  Methods can only be called on components
         pub fn take(
             &mut self,
             amount: Decimal,
@@ -88,7 +69,6 @@ mod pool {
             self.liquidity_pool.take(amount)
         }
 
-        // This is a method, because it needs a reference to self.  Methods can only be called on components
         pub fn put(
             &mut self,
             bucket: Bucket,
@@ -105,6 +85,16 @@ mod pool {
             self.reserve = reserve;
             self.updated_at = Runtime::current_epoch().number();
             self.liquidity_pool.put(bucket)
+        }
+
+        pub fn get_pool_balances(&mut self) -> (Decimal, Decimal, Decimal, Decimal, Decimal) {
+            (
+                self.deposit,
+                self.sr_deposit,
+                self.borrow,
+                self.sr_borrow,
+                self.reserve,
+            )
         }
     }
 }

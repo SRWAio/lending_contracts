@@ -15,9 +15,6 @@ mod lending_protocol {
             admin_rule: AccessRule,
             resource_address: ResourceAddress,
         ) -> (Global<Pool>, ComponentAddress);
-        fn deposit(&mut self);
-        /*fn withdraw(&mut self) -> Bucket;
-        fn borrow(&mut self) -> Bucket;*/
         fn take(&mut self, amount: Decimal,
             deposit: Decimal,
             sr_deposit: Decimal,
@@ -30,20 +27,19 @@ mod lending_protocol {
             borrow: Decimal,
             sr_borrow: Decimal,
             reserve: Decimal,);
+            fn get_pool_balances(&self) -> (Decimal, Decimal, Decimal, Decimal, Decimal);
         }
     }
     extern_blueprint! {
     // import the PriceORacle package from the ledger using its package address
     "package_tdx_2_1ph0hwlqmde3ht29pzy5qehqflvjfrtty4lgyvwhhqp589e0v0qhtke",
     PriceOracle {
-        // Component Methods
         fn get_price(&mut self, res_addr: ResourceAddress) -> Decimal;
         fn get_price_in_xrd(&mut self, res_addr: ResourceAddress) -> Decimal;
         }
     }
 
     enable_method_auth! {
-        // decide which methods are public and which are restricted to certain roles
         roles {
             admin => updatable_by: [admin];
         }
@@ -63,6 +59,7 @@ mod lending_protocol {
             update_pool_parameters => restrict_to: [admin];
             update_balances => restrict_to: [admin];
             update_pool_settings => restrict_to: [admin];
+            update_resource_manager_roles => restrict_to: [admin];
         }
     }
 
@@ -75,15 +72,9 @@ mod lending_protocol {
         assets_in_use: IndexSet<ResourceAddress>,
         oracle_address: Global<PriceOracle>,
         admin_signature_check: HashMap<NonFungibleLocalId, bool>,
-        /// A counter for ID generation
         admin_badge_id_counter: u64,
         admin_badge_address: ResourceAddress,
-        /// User badge resource manager
         user_resource_manager: NonFungibleResourceManager,
-        // Admin badge resource manager
-        //admin_resource_manager: ResourceManager,
-        // Protocol badge resource manager
-        //protocol_resource_manager: ResourceManager,
         pool_parameters: HashMap<ResourceAddress, PoolParameters>,
         ltv_ratios: HashMap<ResourceAddress, Decimal>,
     }
@@ -104,16 +95,13 @@ mod lending_protocol {
             // Admin will be able to create lending pools, update pool configurations and update operating status
             let admin_rule: AccessRule = rule!(require(admin_badge_address));
 
-            // Moderator will be able to update operating status if the last update was not done by an admin
-            //let moderator_rule = rule!(require_amount(dec!(2), admin_badge_address));
-
             let admin_badge =
                 create_admin_badge(admin_rule.clone(), admin_badge_address_reservation);
 
             let protocol_badge = create_protocol_badge(admin_rule.clone());
             let protocol_rule: AccessRule = rule!(require(protocol_badge.resource_address()));
             let user_resource_manager =
-                create_user_resource_manager(admin_rule.clone(), component_rule.clone());
+                create_user_resource_manager(protocol_rule.clone(), component_rule.clone());
 
             // *  Instantiate our component with the previously created resources and addresses * //
             Self {
@@ -204,7 +192,7 @@ mod lending_protocol {
         ) {
             self.pools.insert(resource_address, pool_component);
             let now = Runtime::current_epoch().number();
-
+            let pool_balances = pool_component.get_pool_balances();
             let data = PoolParameters {
                 balances_updated_at: now,
                 base: dec!("0.001"),
@@ -225,11 +213,11 @@ mod lending_protocol {
                 repay_locked: false,
                 pool_reserve: dec!("0.2"),
                 deposit_limit: dec!("10000"),
-                borrow_balance: Decimal::zero(),
-                deposit_balance: Decimal::zero(),
-                reserve_balance: Decimal::zero(),
-                sr_deposit_balance: Decimal::zero(),
-                sr_borrow_balance: Decimal::zero(),
+                deposit_balance: pool_balances.0,
+                sr_deposit_balance: pool_balances.1,
+                borrow_balance: pool_balances.2,
+                sr_borrow_balance: pool_balances.3,
+                reserve_balance: pool_balances.4,
             };
 
             self.pool_parameters.insert(resource_address, data);
@@ -1006,7 +994,6 @@ mod lending_protocol {
             if is_approved_by_admins == false {
                 panic!("Admin functions must be approved by at least 3 admins")
             }
-            info!("collect_reserve_balance initiated.");
             let pool_parameters = self.pool_parameters.get(&resource_address).unwrap().clone();
             let mut reserve_balance = pool_parameters.reserve_balance;
 
@@ -1078,6 +1065,26 @@ mod lending_protocol {
             new_admin_badge
         }
 
+        pub fn update_resource_manager_roles(&mut self) {
+            let is_approved_by_admins = self.is_approved_by_admins();
+            if is_approved_by_admins == false {
+                panic!("Admin functions must be approved by at least 3 admins")
+            }
+            let component_rule = self.component_rule.clone();
+            let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
+                self.protocol_badge.non_fungible_local_ids(1);
+            self.protocol_badge
+                .authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                    self.user_resource_manager
+                        .set_mintable(component_rule.clone());
+                    self.user_resource_manager
+                        .set_burnable(component_rule.clone());
+                    self.user_resource_manager
+                        .set_updatable_non_fungible_data(component_rule.clone())
+                });
+            self.admin_signature_check = HashMap::new();
+        }
+
         fn is_approved_by_admins(&mut self) -> bool {
             let singature_count = self.admin_signature_check.len();
             if singature_count < 3 {
@@ -1099,7 +1106,6 @@ mod lending_protocol {
             pool_reserve: Decimal,
             pool_deposit_limit: Decimal,
         ) {
-            info!("update_pool_parameters initiated.");
             let is_approved_by_admins = self.is_approved_by_admins();
             if is_approved_by_admins == false {
                 panic!("Admin functions must be approved by at least 3 admins")
@@ -1131,7 +1137,6 @@ mod lending_protocol {
             reserve_factor: Decimal,
             ltv_ratio: Decimal,
         ) {
-            info!("update_pool_parameters initiated.");
             let is_approved_by_admins = self.is_approved_by_admins();
             if is_approved_by_admins == false {
                 panic!("Admin functions must be approved by at least 3 admins")

@@ -48,8 +48,6 @@ pub struct PoolParameters {
 }
 impl PoolParameters {
     pub fn _get_pool_parameters(&mut self) -> (Decimal, Decimal, Decimal, Decimal, Decimal) {
-        info!("get_pool_parameters initiated.");
-
         (
             self.min_liquidable_value,
             self.max_liquidation_percent,
