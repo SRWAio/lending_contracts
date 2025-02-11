@@ -9,7 +9,7 @@ mod lending_protocol {
 
     extern_blueprint! {
     // import the Pool package from the ledger using its package address
-    "package_tdx_2_1pk2dgttfuun4qf7shskfx53pqs6um6psaefy4203guwr2fp9j83n83",
+    "package_tdx_2_1ph3wnv2tdwrsqewkx6dqz2r4m0ag0y6dzzfc50ud3q8qe06xya52l5",
     Pool {
         fn instantiate(
             admin_rule: AccessRule,
@@ -152,6 +152,13 @@ mod lending_protocol {
             let admin_rule: AccessRule = rule!(require(admin_badge_address));
             let protocol_rule: AccessRule = rule!(require(protocol_badge.resource_address()));
             let user_resource_manager: NonFungibleResourceManager = user_badge_address.into();
+            let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
+                protocol_badge.non_fungible_local_ids();
+            protocol_badge.authorize_with_non_fungibles(&non_fungible_local_ids, || {
+                user_resource_manager.set_mintable(component_rule.clone());
+                user_resource_manager.set_burnable(component_rule.clone());
+                user_resource_manager.set_updatable_non_fungible_data(component_rule.clone())
+            });
             // *  Instantiate our component with the previously created resources and addresses * //
             Self {
                 protocol_badge: NonFungibleVault::with_bucket(protocol_badge),
