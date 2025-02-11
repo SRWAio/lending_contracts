@@ -67,7 +67,10 @@ pub fn _calculate_deposit_interest(borrow_interest: Decimal, reserve_interest: D
 }
 
 pub fn calculate_token_price(total: Decimal, total_sr: Decimal) -> Decimal {
-    let token_price = total / total_sr;
+    let mut token_price = Decimal::one();
+    if total_sr != Decimal::zero() {
+        token_price = total / total_sr;
+    }
     token_price
 }
 
