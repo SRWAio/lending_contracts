@@ -739,24 +739,8 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
+            let sb_price = calculate_token_price(asset_total_borrow_balance, sr_borrow_balance);
             asset_total_borrow_balance += interests.0;
-            let sb_interest = calculate_sb_interest(
-                repaid.amount(),
-                asset_total_borrow_balance,
-                sr_borrow_balance,
-            );
-            asset_total_reserve_balance += interests.1;
-            asset_total_deposit_balance += interests.2;
-            asset_total_borrow_balance -= repaid.amount();
-            sr_borrow_balance -= sb_interest;
-            self.update_pool_balances(
-                asset_address,
-                asset_total_deposit_balance,
-                pool_parameters.sr_deposit_balance,
-                asset_total_borrow_balance,
-                sr_borrow_balance,
-                asset_total_reserve_balance,
-            );
             let non_fungible_id: NonFungibleLocalId = user_badge
                 .check(manager_address)
                 .as_non_fungible()
@@ -764,7 +748,22 @@ mod lending_protocol {
             let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
-            let to_return = user.on_repay(asset_address, sb_interest);
+            let user_borrow = user.get_borrow(asset_address);
+            let max_repay_amount = user_borrow * sb_price;
+            let mut repaid_amount = repaid.amount();
+            let mut to_return = Decimal::zero();
+            if repaid_amount > max_repay_amount {
+                repaid_amount = max_repay_amount;
+                to_return = repaid_amount - max_repay_amount;
+            }
+            let sb_interest =
+                calculate_sb_interest(repaid_amount, asset_total_borrow_balance, sr_borrow_balance);
+            asset_total_reserve_balance += interests.1;
+            asset_total_deposit_balance += interests.2;
+
+            sr_borrow_balance -= sb_interest;
+
+            user.on_repay(asset_address, sb_interest);
             self.user_resource_manager.update_non_fungible_data(
                 &non_fungible_id,
                 "borrows",
@@ -775,7 +774,16 @@ mod lending_protocol {
                 "updated_at",
                 Runtime::current_epoch().number(),
             );
+            asset_total_borrow_balance -= repaid_amount;
             let return_bucket = repaid.take(to_return);
+            self.update_pool_balances(
+                asset_address,
+                asset_total_deposit_balance,
+                pool_parameters.sr_deposit_balance,
+                asset_total_borrow_balance,
+                sr_borrow_balance,
+                asset_total_reserve_balance,
+            );
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);

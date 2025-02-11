@@ -73,20 +73,13 @@ impl UserData {
         self.update_borrow(resource_address, sr_borrow);
     }
 
-    pub fn on_repay(
-        &mut self,
-        resource_address: ResourceAddress,
-        sr_borrow_decrease: Decimal,
-    ) -> Decimal {
+    pub fn on_repay(&mut self, resource_address: ResourceAddress, sr_borrow_decrease: Decimal) {
         let mut sr_borrow = self.get_borrow(resource_address);
         sr_borrow -= sr_borrow_decrease;
-        let mut to_return = Decimal::ZERO;
         if sr_borrow < Decimal::ZERO {
-            to_return = Decimal::ZERO - sr_borrow;
             sr_borrow = Decimal::ZERO;
         }
         self.update_borrow(resource_address, sr_borrow);
-        to_return
     }
 
     pub fn on_liquidate_repay(
