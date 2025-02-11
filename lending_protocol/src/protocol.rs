@@ -489,14 +489,14 @@ mod lending_protocol {
                 panic!("Withdrawing is locked for now!");
             }
 
-            let withdrawable_amount = self.borrowable_amount(
+            let available_liquidity = self.borrowable_amount(
                 pool_parameters.deposit_balance,
                 pool_parameters.borrow_balance,
                 pool_parameters.reserve_balance,
                 pool_parameters.pool_reserve,
             );
-            if withdrawable_amount < amount {
-                panic!("Max withdrawal amount is {}: ", withdrawable_amount);
+            if available_liquidity < amount {
+                panic!("Max withdrawal amount is {}: ", available_liquidity);
             }
 
             let asset_ltv_ratio = pool_parameters.ltv_ratio;
@@ -805,10 +805,6 @@ mod lending_protocol {
             repaid: Bucket,
             deposited_asset: ResourceAddress,
         ) -> Bucket {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
-            }
             let repaid_resource_address = repaid.resource_address();
             let integer_user_id = user_id
                 .to_string()
@@ -998,8 +994,6 @@ mod lending_protocol {
                         )
                     });
             }
-            self.admin_signature_check = HashMap::new();
-
             to_return_reward
         }
 

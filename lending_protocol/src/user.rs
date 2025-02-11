@@ -61,6 +61,9 @@ impl UserData {
     pub fn on_withdraw(&mut self, resource_address: ResourceAddress, sr_deposit_decrease: Decimal) {
         let mut sr_deposit = self.get_deposit(resource_address);
         sr_deposit -= sr_deposit_decrease;
+        if sr_deposit < Decimal::ZERO {
+            panic!("Amount is greater than deposit balance");
+        }
         self.update_deposit(resource_address, sr_deposit);
     }
 
