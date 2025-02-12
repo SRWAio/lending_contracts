@@ -511,8 +511,10 @@ mod lending_protocol {
             let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
+            let total_collateral_and_loan =
+                user.calculate_total_collateral_and_loan(&self.pool_parameters, prices.clone());
             let user_available_collateral =
-                user.calculate_total_collateral(&self.pool_parameters, prices.clone());
+                total_collateral_and_loan.0 - total_collateral_and_loan.1;
             let withdrawable_amount_in_xrd = user_available_collateral / asset_ltv_ratio;
             let cost_of_asset_in_terms_of_xrd = prices.get(&resource_address).unwrap();
             let withdrawable_amount = withdrawable_amount_in_xrd / *cost_of_asset_in_terms_of_xrd;
@@ -632,8 +634,10 @@ mod lending_protocol {
             let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
+            let total_collateral_and_loan =
+                user.calculate_total_collateral_and_loan(&self.pool_parameters, prices.clone());
             let user_available_collateral =
-                user.calculate_total_collateral(&self.pool_parameters, prices.clone());
+                total_collateral_and_loan.0 - total_collateral_and_loan.1;
             assert!(
                 user_available_collateral >= borrow_amount_in_terms_of_xrd,
                 "[borrow_asset][POOL] User does not have enough collateral. Requested loan with \
