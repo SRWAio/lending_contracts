@@ -227,7 +227,7 @@ mod lending_protocol {
                 sr_borrow_balance: pool_balances.3,
                 reserve_balance: pool_balances.4,
             };
-
+            self.ltv_ratios.insert(resource_address, dec!("0.5"));
             self.pool_parameters.insert(resource_address, data);
         }
 
@@ -721,7 +721,7 @@ mod lending_protocol {
             let pool_parameters = self.pool_parameters.get(&asset_address).unwrap().clone();
             let repay_locked = pool_parameters.repay_locked;
             if repay_locked {
-                panic!("Withdrawing is locked for now!");
+                panic!("Repaying is locked for now!");
             }
 
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
