@@ -70,7 +70,6 @@ mod lending_protocol {
         admin_rule: AccessRule,
         component_rule: AccessRule,
         protocol_rule: AccessRule,
-        assets_in_use: IndexSet<ResourceAddress>,
         oracle_address: Global<PriceOracle>,
         admin_signature_check: HashMap<NonFungibleLocalId, bool>,
         admin_badge_id_counter: u64,
@@ -115,7 +114,6 @@ mod lending_protocol {
                 admin_signature_check: HashMap::new(),
                 admin_badge_address: admin_badge.resource_address(),
                 admin_badge_id_counter: 5,
-                assets_in_use: IndexSet::new(),
                 pool_parameters: HashMap::new(),
                 oracle_address,
                 ltv_ratios: HashMap::new(),
@@ -171,7 +169,6 @@ mod lending_protocol {
                 protocol_rule,
                 admin_badge_address,
                 admin_badge_id_counter: 5,
-                assets_in_use: IndexSet::new(),
                 pool_parameters: HashMap::new(),
                 oracle_address,
                 ltv_ratios: HashMap::new(),
@@ -1173,7 +1170,7 @@ mod lending_protocol {
                     reserve_factor,
                     ltv_ratio,
                 );
-
+            self.ltv_ratios.insert(resource_address, ltv_ratio);
             self.admin_signature_check = HashMap::new();
         }
 
