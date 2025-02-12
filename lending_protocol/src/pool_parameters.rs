@@ -110,4 +110,17 @@ impl PoolParameters {
         self.reserve_balance = reserve_balance;
         self.balances_updated_at = Runtime::current_epoch().number();
     }
+
+    pub fn lock_pool(
+        &mut self,
+        deposit_locked: bool,
+        borrow_locked: bool,
+        withdraw_locked: bool,
+        repay_locked: bool,
+    ) {
+        self.deposit_locked = deposit_locked;
+        self.borrow_locked = borrow_locked;
+        self.withdraw_locked = withdraw_locked;
+        self.repay_locked = repay_locked;
+    }
 }

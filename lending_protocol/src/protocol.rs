@@ -60,6 +60,7 @@ mod lending_protocol {
             update_balances => restrict_to: [admin];
             update_pool_settings => restrict_to: [admin];
             update_resource_manager_roles => restrict_to: [admin];
+            lock_pool => restrict_to: [admin];
         }
     }
 
@@ -739,6 +740,7 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
+            //TO DO: Calculate interest balance
             let sb_price = calculate_token_price(asset_total_borrow_balance, sr_borrow_balance);
             asset_total_borrow_balance += interests.0;
             let non_fungible_id: NonFungibleLocalId = user_badge
@@ -1201,29 +1203,23 @@ mod lending_protocol {
                 .update_balances(deposit, sr_deposit, borrow, sr_borrow, reserve);
         }
 
-        fn _get_id_from_proof(&mut self, user_badge: Proof) -> Decimal {
-            let manager = ResourceManager::from(user_badge.resource_address());
-            let non_fungible_id = user_badge
-                .check(manager.address())
-                .as_non_fungible()
-                .non_fungible_local_id();
-
-            let user_id = match non_fungible_id {
-                NonFungibleLocalId::Integer(id) => id.value(),
-                _ => panic!("Unexpected NonFungibleLocalId type"),
-            };
-            let user_id_decimal = Decimal::from(user_id);
-            user_id_decimal
-        }
-
-        fn _get_non_fungible_id_from_proof(&mut self, user_badge: Proof) -> NonFungibleLocalId {
-            let manager = ResourceManager::from(user_badge.resource_address());
-            let non_fungible_id = user_badge
-                .check(manager.address())
-                .as_non_fungible()
-                .non_fungible_local_id();
-
-            non_fungible_id
+        pub fn lock_pool(
+            &mut self,
+            resource_address: ResourceAddress,
+            deposit_locked: bool,
+            borrow_locked: bool,
+            withdraw_locked: bool,
+            repay_locked: bool,
+        ) {
+            let is_approved_by_admins = self.is_approved_by_admins();
+            if is_approved_by_admins == false {
+                panic!("Admin functions must be approved by at least 3 admins")
+            }
+            self.pool_parameters
+                .get_mut(&resource_address)
+                .unwrap()
+                .lock_pool(deposit_locked, borrow_locked, withdraw_locked, repay_locked);
+            self.admin_signature_check = HashMap::new();
         }
 
         fn borrowable_amount(
