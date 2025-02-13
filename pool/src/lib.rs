@@ -17,9 +17,9 @@ mod pool {
         // The liquidity pool
         liquidity_pool: Vault,
         deposit: Decimal,
-        sr_deposit: Decimal,
+        sd_deposit: Decimal,
         borrow: Decimal,
-        sr_borrow: Decimal,
+        sb_borrow: Decimal,
         reserve: Decimal,
         updated_at: u64,
     }
@@ -35,8 +35,8 @@ mod pool {
             let pool_component = Self {
                 liquidity_pool: Vault::new(resource_address),
                 deposit: Decimal::zero(),
-                sr_deposit: Decimal::zero(),
-                sr_borrow: Decimal::zero(),
+                sd_deposit: Decimal::zero(),
+                sb_borrow: Decimal::zero(),
                 borrow: Decimal::zero(),
                 reserve: Decimal::zero(),
                 updated_at: 0,
@@ -55,15 +55,15 @@ mod pool {
             &mut self,
             amount: Decimal,
             deposit: Decimal,
-            sr_deposit: Decimal,
+            sd_deposit: Decimal,
             borrow: Decimal,
-            sr_borrow: Decimal,
+            sb_borrow: Decimal,
             reserve: Decimal,
         ) -> Bucket {
             self.borrow = borrow;
             self.deposit = deposit;
-            self.sr_deposit = sr_deposit;
-            self.sr_borrow = sr_borrow;
+            self.sd_deposit = sd_deposit;
+            self.sb_borrow = sb_borrow;
             self.reserve = reserve;
             self.updated_at = Runtime::current_epoch().number();
             self.liquidity_pool.take(amount)
@@ -73,15 +73,15 @@ mod pool {
             &mut self,
             bucket: Bucket,
             deposit: Decimal,
-            sr_deposit: Decimal,
+            sd_deposit: Decimal,
             borrow: Decimal,
-            sr_borrow: Decimal,
+            sb_borrow: Decimal,
             reserve: Decimal,
         ) {
             self.borrow = borrow;
             self.deposit = deposit;
-            self.sr_deposit = sr_deposit;
-            self.sr_borrow = sr_borrow;
+            self.sd_deposit = sd_deposit;
+            self.sb_borrow = sb_borrow;
             self.reserve = reserve;
             self.updated_at = Runtime::current_epoch().number();
             self.liquidity_pool.put(bucket)
@@ -90,9 +90,9 @@ mod pool {
         pub fn get_pool_balances(&mut self) -> (Decimal, Decimal, Decimal, Decimal, Decimal) {
             (
                 self.deposit,
-                self.sr_deposit,
+                self.sd_deposit,
                 self.borrow,
-                self.sr_borrow,
+                self.sb_borrow,
                 self.reserve,
             )
         }

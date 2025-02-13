@@ -42,8 +42,8 @@ pub struct PoolParameters {
     // Deposit balances
     pub deposit_balance: Decimal,
     pub reserve_balance: Decimal,
-    pub sr_deposit_balance: Decimal,
-    pub sr_borrow_balance: Decimal,
+    pub sd_deposit_balance: Decimal,
+    pub sb_borrow_balance: Decimal,
     pub balances_updated_at: u64,
 }
 impl PoolParameters {
@@ -98,15 +98,15 @@ impl PoolParameters {
     pub fn update_balances(
         &mut self,
         deposit_balance: Decimal,
-        sr_deposit_balance: Decimal,
+        sd_deposit_balance: Decimal,
         borrow_balance: Decimal,
-        sr_borrow_balance: Decimal,
+        sb_borrow_balance: Decimal,
         reserve_balance: Decimal,
     ) {
         self.deposit_balance = deposit_balance;
-        self.sr_deposit_balance = sr_deposit_balance;
+        self.sd_deposit_balance = sd_deposit_balance;
         self.borrow_balance = borrow_balance;
-        self.sr_borrow_balance = sr_borrow_balance;
+        self.sb_borrow_balance = sb_borrow_balance;
         self.reserve_balance = reserve_balance;
         self.balances_updated_at = Runtime::current_epoch().number();
     }
