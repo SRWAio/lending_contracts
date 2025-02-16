@@ -658,7 +658,7 @@ mod lending_protocol {
             if user_available_collateral
                 < pool_parameters.deposit_balance * pool_parameters.max_borrow_percent
             {
-                max_borrow = user_available_collateral * pool_parameters.ltv_ratio;
+                max_borrow = user_available_collateral;
             } else {
                 max_borrow = pool_parameters.max_borrow_percent * pool_parameters.deposit_balance;
             }
