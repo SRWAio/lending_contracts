@@ -201,18 +201,15 @@ impl UserData {
             let cost_of_asset_in_terms_of_xrd = prices.get(asset_address).unwrap();
             let sr_deposit_balance = self.get_deposit(asset_address.clone());
             if sr_deposit_balance != Decimal::ZERO {
-                let sd_price = parameters.deposit_balance / parameters.sr_deposit_balance;
                 let ltv_ratio = &parameters.ltv_ratio;
 
-                let asset_value_in_xrd =
-                    sr_deposit_balance * sd_price * *cost_of_asset_in_terms_of_xrd;
+                let asset_value_in_xrd = sr_deposit_balance * *cost_of_asset_in_terms_of_xrd;
                 let asset_collateral = asset_value_in_xrd * *ltv_ratio;
                 user_collateral_sum += asset_collateral;
             }
             let sr_borrow_balance = self.get_borrow(asset_address.clone());
             if sr_borrow_balance != Decimal::ZERO {
-                let sb_price = parameters.borrow_balance / parameters.sr_borrow_balance;
-                let asset_loan = sr_borrow_balance * sb_price * *cost_of_asset_in_terms_of_xrd;
+                let asset_loan = sr_borrow_balance * *cost_of_asset_in_terms_of_xrd;
                 user_loan_sum += asset_loan;
             }
         }

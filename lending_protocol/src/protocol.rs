@@ -194,22 +194,28 @@ mod lending_protocol {
             &mut self,
             resource_address: ResourceAddress,
             pool_component: Global<Pool>,
+            base: Decimal,
+            base_multiplier: Decimal,
+            multiplier: Decimal,
+            kink: Decimal,
+            reserve_factor: Decimal,
+            ltv_ratio: Decimal,
         ) {
             self.pools.insert(resource_address, pool_component);
             let now = Runtime::current_epoch().number();
             let pool_balances = pool_component.get_pool_balances();
             let data = PoolParameters {
                 balances_updated_at: now,
-                base: dec!("0.001"),
+                base,
+                base_multiplier,
+                multiplier,
+                kink,
+                reserve_factor,
+                ltv_ratio,
                 min_collateral_ratio: Decimal::one(),
                 max_borrow_percent: dec!("0.1"),
                 max_liquidation_percent: dec!("0.5"),
                 liquidation_bonus: dec!("0.1"),
-                ltv_ratio: dec!("0.5"),
-                multiplier: dec!("10"),
-                base_multiplier: dec!("0.03"),
-                reserve_factor: Decimal::zero(),
-                kink: dec!("0.7"),
                 liquidation_reserve_factor: dec!("0.2"),
                 min_liquidable_value: dec!("6000"),
                 deposit_locked: false,
@@ -224,33 +230,39 @@ mod lending_protocol {
                 sr_borrow_balance: pool_balances.3,
                 reserve_balance: pool_balances.4,
             };
-            self.ltv_ratios.insert(resource_address, dec!("0.5"));
+            self.ltv_ratios.insert(resource_address, ltv_ratio);
             self.pool_parameters.insert(resource_address, data);
         }
 
         pub fn create_pool(
             &mut self,
             resource_address: ResourceAddress,
+            base: Decimal,
+            base_multiplier: Decimal,
+            multiplier: Decimal,
+            kink: Decimal,
+            reserve_factor: Decimal,
+            ltv_ratio: Decimal,
         ) -> (Global<Pool>, ComponentAddress) {
             let pool_component_address =
                 Blueprint::<Pool>::instantiate(self.protocol_rule.clone(), resource_address);
             self.pools
                 .insert(resource_address, pool_component_address.0);
-            self.ltv_ratios.insert(resource_address, dec!("0.5"));
+            self.ltv_ratios.insert(resource_address, ltv_ratio);
             let now = Runtime::current_epoch().number();
 
             let data = PoolParameters {
                 balances_updated_at: now,
-                base: dec!("0.001"),
+                base,
+                base_multiplier,
+                multiplier,
+                kink,
+                reserve_factor,
+                ltv_ratio,
                 min_collateral_ratio: Decimal::one(),
                 max_borrow_percent: dec!("0.1"),
                 max_liquidation_percent: dec!("0.5"),
                 liquidation_bonus: dec!("0.1"),
-                ltv_ratio: dec!("0.5"),
-                multiplier: dec!("10"),
-                base_multiplier: dec!("0.03"),
-                reserve_factor: Decimal::zero(),
-                kink: dec!("0.7"),
                 liquidation_reserve_factor: dec!("0.2"),
                 min_liquidable_value: dec!("6000"),
                 deposit_locked: false,
@@ -638,10 +650,21 @@ mod lending_protocol {
             assert!(
                 user_available_collateral >= borrow_amount_in_terms_of_xrd,
                 "[borrow_asset][POOL] User does not have enough collateral. Requested loan with \
-                  value of `{:?}` XRD but only has `{:?}` XRD of available collateral.",
+                      value of `{:?}` XRD but only has `{:?}` XRD of available collateral.",
                 borrow_amount_in_terms_of_xrd,
                 user_available_collateral
             );
+            let max_borrow;
+            if user_available_collateral
+                < pool_parameters.deposit_balance * pool_parameters.max_borrow_percent
+            {
+                max_borrow = user_available_collateral * pool_parameters.ltv_ratio;
+            } else {
+                max_borrow = pool_parameters.max_borrow_percent * pool_parameters.deposit_balance;
+            }
+            if amount > max_borrow {
+                panic!("Max borrow amount is {}: ", max_borrow);
+            }
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
