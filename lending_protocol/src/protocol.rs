@@ -298,11 +298,9 @@ mod lending_protocol {
             let mut sr_deposit_balance = pool_parameters.sr_deposit_balance;
 
             if pool_deposit_limit > Decimal::ZERO {
-                let asset_price = self.oracle_address.get_price(resource_address);
-                let current_deposit_balance =
-                    (asset_total_deposit_balance + asset.amount()) * asset_price;
+                let current_deposit_balance = asset_total_deposit_balance + asset.amount();
                 if current_deposit_balance > pool_deposit_limit {
-                    panic!("Deposit limit is {} .", pool_deposit_limit / asset_price);
+                    panic!("Deposit limit is {} .", pool_deposit_limit);
                 }
             }
             let utilisation =
@@ -395,11 +393,9 @@ mod lending_protocol {
             let mut sr_deposit_balance = pool_parameters.sr_deposit_balance;
 
             if pool_deposit_limit > Decimal::ZERO {
-                let asset_price = self.oracle_address.get_price(resource_address);
-                let current_deposit_balance =
-                    (asset_total_deposit_balance + asset.amount()) * asset_price;
+                let current_deposit_balance = asset_total_deposit_balance + asset.amount();
                 if current_deposit_balance > pool_deposit_limit {
-                    panic!("Deposit limit is {} .", pool_deposit_limit / asset_price);
+                    panic!("Deposit limit is {} .", pool_deposit_limit);
                 }
             }
             let utilisation =
@@ -494,7 +490,7 @@ mod lending_protocol {
                 panic!("Withdrawing is locked for now!");
             }
 
-            let available_liquidity = self.borrowable_amount(
+            let available_liquidity = self.available_liquidity(
                 pool_parameters.deposit_balance,
                 pool_parameters.borrow_balance,
                 pool_parameters.reserve_balance,
@@ -615,14 +611,14 @@ mod lending_protocol {
                 panic!("Withdrawing is locked for now!");
             }
 
-            let borrowable_amount = self.borrowable_amount(
+            let available_liquidity = self.available_liquidity(
                 pool_parameters.deposit_balance,
                 pool_parameters.borrow_balance,
                 pool_parameters.reserve_balance,
                 pool_parameters.pool_reserve,
             );
-            if borrowable_amount < amount {
-                panic!("Max borrow amount is {}: ", borrowable_amount);
+            if available_liquidity < amount {
+                panic!("Max borrow amount is {}: ", available_liquidity);
             }
 
             let mut prices = HashMap::new();
@@ -902,7 +898,7 @@ mod lending_protocol {
             let reserve_balance = lending_parameters.reserve_balance;
             let pool_reserve = lending_parameters.pool_reserve;
 
-            let borrowable_amount = self.borrowable_amount(
+            let available_liquidity = self.available_liquidity(
                 deposit_balance,
                 borrow_balance,
                 reserve_balance,
@@ -927,7 +923,7 @@ mod lending_protocol {
                 prices,
                 //asset_min_liquidate_value,
                 asset_borrow_amount,
-                borrowable_amount,
+                available_liquidity,
                 sb_price,
             );
 
@@ -1246,7 +1242,7 @@ mod lending_protocol {
             self.admin_signature_check = HashMap::new();
         }
 
-        fn borrowable_amount(
+        fn available_liquidity(
             &mut self,
             total_deposit: Decimal,
             total_borrow: Decimal,

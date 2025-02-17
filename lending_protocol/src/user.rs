@@ -120,14 +120,14 @@ impl UserData {
         prices: HashMap<ResourceAddress, Decimal>,
         //asset_min_liquidate_value: Decimal,
         asset_borrow_amount: Decimal,
-        borrowable_amount: Decimal,
+        available_liquidity: Decimal,
         sb_price: Decimal,
     ) -> (Decimal, Decimal, Decimal) {
         // Calculate the max repayment amount that's going to be used to repay users debt
         let cost_of_deposit_asset_in_terms_of_xrd = prices.get(&deposit_asset_address).unwrap();
         let cost_of_repaid_asset_in_terms_of_xrd = prices.get(&repaid_asset_address).unwrap();
-        let borrowable_amount_in_terms_of_xrd =
-            borrowable_amount * *cost_of_deposit_asset_in_terms_of_xrd;
+        let available_liquidity_in_terms_of_xrd =
+            available_liquidity * *cost_of_deposit_asset_in_terms_of_xrd;
         //for unsolvent users
         if borrow_amount * (1 + liquidation_bonus) > deposit_amount {
             max_liquidation_percent = Decimal::ONE;
@@ -140,8 +140,8 @@ impl UserData {
         let max_repayment = max_liquidation_percent * borrow_amount;
         //}
         amount *= *cost_of_repaid_asset_in_terms_of_xrd;
-        if amount > borrowable_amount_in_terms_of_xrd {
-            panic!("Amount is greater than max borrowable amount");
+        if amount > available_liquidity_in_terms_of_xrd {
+            panic!("Amount is greater than available liquidity");
         }
         liquidated_user_deposit_balance *= *cost_of_deposit_asset_in_terms_of_xrd;
 
