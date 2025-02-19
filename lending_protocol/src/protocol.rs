@@ -17,15 +17,15 @@ mod lending_protocol {
         ) -> (Global<Pool>, ComponentAddress);
         fn take(&mut self, amount: Decimal,
             deposit: Decimal,
-            sr_deposit: Decimal,
+            sd_balance: Decimal,
             borrow: Decimal,
-            sr_borrow: Decimal,
+            sb_balance: Decimal,
             reserve: Decimal,)  -> Bucket;
         fn put(&mut self, bucket: Bucket,
             deposit: Decimal,
-            sr_deposit: Decimal,
+            sd_balance: Decimal,
             borrow: Decimal,
-            sr_borrow: Decimal,
+            sb_balance: Decimal,
             reserve: Decimal,);
             fn get_pool_balances(&self) -> (Decimal, Decimal, Decimal, Decimal, Decimal);
         }
@@ -240,9 +240,9 @@ mod lending_protocol {
                 pool_reserve: dec!("0.2"),
                 deposit_limit: dec!("10000"),
                 deposit_balance: pool_balances.0,
-                sr_deposit_balance: pool_balances.1,
+                sd_balance: pool_balances.1,
                 borrow_balance: pool_balances.2,
-                sr_borrow_balance: pool_balances.3,
+                sb_balance: pool_balances.3,
                 reserve_balance: pool_balances.4,
             };
             self.ltv_ratios.insert(resource_address, ltv_ratio);
@@ -286,11 +286,11 @@ mod lending_protocol {
                 repay_locked: false,
                 pool_reserve: dec!("0.2"),
                 deposit_limit: dec!("10000"),
-                borrow_balance: Decimal::zero(),
                 deposit_balance: Decimal::zero(),
+                sd_balance: Decimal::zero(),
+                borrow_balance: Decimal::zero(),
+                sb_balance: Decimal::zero(),
                 reserve_balance: Decimal::zero(),
-                sr_deposit_balance: Decimal::zero(),
-                sr_borrow_balance: Decimal::zero(),
             };
 
             self.pool_parameters.insert(resource_address, data);
@@ -310,7 +310,7 @@ mod lending_protocol {
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
-            let mut sr_deposit_balance = pool_parameters.sr_deposit_balance;
+            let mut sd_balance = pool_parameters.sd_balance;
 
             if pool_deposit_limit > Decimal::ZERO {
                 let current_deposit_balance = asset_total_deposit_balance + asset.amount();
@@ -335,12 +335,9 @@ mod lending_protocol {
             );
             asset_total_deposit_balance += interests.2;
 
-            let sd_interest = calculate_sd_interest(
-                asset.amount(),
-                asset_total_deposit_balance,
-                sr_deposit_balance,
-            );
-            sr_deposit_balance += sd_interest;
+            let sd_interest =
+                calculate_sd_interest(asset.amount(), asset_total_deposit_balance, sd_balance);
+            sd_balance += sd_interest;
             let mut user_count = match self.user_resource_manager.total_supply() {
                 Some(value) => value,
                 None => Decimal::zero(),
@@ -369,9 +366,9 @@ mod lending_protocol {
             self.update_pool_balances(
                 resource_address,
                 asset_total_deposit_balance,
-                sr_deposit_balance,
+                sd_balance,
                 asset_total_borrow_balance,
-                pool_parameters.sr_borrow_balance,
+                pool_parameters.sb_balance,
                 asset_total_reserve_balance,
             );
             let mut pool = self.pools.get(&resource_address).unwrap().clone();
@@ -382,9 +379,9 @@ mod lending_protocol {
                     pool.put(
                         asset,
                         asset_total_deposit_balance,
-                        sr_deposit_balance,
+                        sd_balance,
                         asset_total_borrow_balance,
-                        pool_parameters.sr_borrow_balance,
+                        pool_parameters.sb_balance,
                         asset_total_reserve_balance,
                     )
                 });
@@ -405,7 +402,7 @@ mod lending_protocol {
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
-            let mut sr_deposit_balance = pool_parameters.sr_deposit_balance;
+            let mut sd_balance = pool_parameters.sd_balance;
 
             if pool_deposit_limit > Decimal::ZERO {
                 let current_deposit_balance = asset_total_deposit_balance + asset.amount();
@@ -430,12 +427,9 @@ mod lending_protocol {
             );
             asset_total_deposit_balance += interests.2;
 
-            let sd_interest = calculate_sd_interest(
-                asset.amount(),
-                asset_total_deposit_balance,
-                sr_deposit_balance,
-            );
-            sr_deposit_balance += sd_interest;
+            let sd_interest =
+                calculate_sd_interest(asset.amount(), asset_total_deposit_balance, sd_balance);
+            sd_balance += sd_interest;
             let manager_address = self.user_resource_manager.address();
             if manager_address != user_badge_resource_address {
                 panic!("User does not exist!");
@@ -447,9 +441,9 @@ mod lending_protocol {
             self.update_pool_balances(
                 resource_address,
                 asset_total_deposit_balance,
-                sr_deposit_balance,
+                sd_balance,
                 asset_total_borrow_balance,
-                pool_parameters.sr_borrow_balance,
+                pool_parameters.sb_balance,
                 asset_total_reserve_balance,
             );
             let non_fungible_id = user_badge
@@ -478,9 +472,9 @@ mod lending_protocol {
                     pool.put(
                         asset,
                         asset_total_deposit_balance,
-                        sr_deposit_balance,
+                        sd_balance,
                         asset_total_borrow_balance,
-                        pool_parameters.sr_borrow_balance,
+                        pool_parameters.sb_balance,
                         asset_total_reserve_balance,
                     )
                 });
@@ -545,7 +539,7 @@ mod lending_protocol {
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
-            let mut sr_deposit_balance = pool_parameters.sr_deposit_balance;
+            let mut sd_balance = pool_parameters.sd_balance;
 
             let utilisation =
                 get_utilisation(asset_total_deposit_balance, asset_total_borrow_balance);
@@ -564,17 +558,17 @@ mod lending_protocol {
             );
             asset_total_deposit_balance += interests.2;
             let sd_interest =
-                calculate_sd_interest(amount, asset_total_deposit_balance, sr_deposit_balance);
+                calculate_sd_interest(amount, asset_total_deposit_balance, sd_balance);
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance -= amount;
-            sr_deposit_balance -= sd_interest;
+            sd_balance -= sd_interest;
             self.update_pool_balances(
                 resource_address,
                 asset_total_deposit_balance,
-                sr_deposit_balance,
+                sd_balance,
                 asset_total_borrow_balance,
-                pool_parameters.sr_borrow_balance,
+                pool_parameters.sb_balance,
                 asset_total_reserve_balance,
             );
 
@@ -598,9 +592,9 @@ mod lending_protocol {
                         pool.take(
                             amount,
                             asset_total_deposit_balance,
-                            sr_deposit_balance,
+                            sd_balance,
                             asset_total_borrow_balance,
-                            pool_parameters.sr_borrow_balance,
+                            pool_parameters.sb_balance,
                             asset_total_reserve_balance,
                         )
                     });
@@ -679,7 +673,7 @@ mod lending_protocol {
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
-            let mut sr_borrow_balance = pool_parameters.sr_borrow_balance;
+            let mut sb_balance = pool_parameters.sb_balance;
             let utilisation =
                 get_utilisation(asset_total_deposit_balance, asset_total_borrow_balance);
             let borrow_rate = calculate_borrow_rate(
@@ -696,18 +690,17 @@ mod lending_protocol {
                 pool_parameters.reserve_factor,
             );
             asset_total_borrow_balance += interests.0;
-            let sb_interest =
-                calculate_sb_interest(amount, asset_total_borrow_balance, sr_borrow_balance);
+            let sb_interest = calculate_sb_interest(amount, asset_total_borrow_balance, sb_balance);
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
             asset_total_borrow_balance += amount;
-            sr_borrow_balance += sb_interest;
+            sb_balance += sb_interest;
             self.update_pool_balances(
                 asset_address,
                 asset_total_deposit_balance,
-                pool_parameters.sr_deposit_balance,
+                pool_parameters.sd_balance,
                 asset_total_borrow_balance,
-                sr_borrow_balance,
+                sb_balance,
                 asset_total_reserve_balance,
             );
 
@@ -731,9 +724,9 @@ mod lending_protocol {
                         pool.take(
                             amount,
                             asset_total_deposit_balance,
-                            pool_parameters.sr_deposit_balance,
+                            pool_parameters.sd_balance,
                             asset_total_borrow_balance,
-                            sr_borrow_balance,
+                            sb_balance,
                             asset_total_reserve_balance,
                         )
                     });
@@ -758,7 +751,7 @@ mod lending_protocol {
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
             let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
-            let mut sr_borrow_balance = pool_parameters.sr_borrow_balance;
+            let mut sb_balance = pool_parameters.sb_balance;
             let utilisation =
                 get_utilisation(asset_total_deposit_balance, asset_total_borrow_balance);
             let borrow_rate = calculate_borrow_rate(
@@ -776,7 +769,7 @@ mod lending_protocol {
                 pool_parameters.reserve_factor,
             );
             //TO DO: Calculate interest balance
-            let sb_price = calculate_token_price(asset_total_borrow_balance, sr_borrow_balance);
+            let sb_price = calculate_token_price(asset_total_borrow_balance, sb_balance);
             asset_total_borrow_balance += interests.0;
             let non_fungible_id: NonFungibleLocalId = user_badge
                 .check(manager_address)
@@ -794,11 +787,11 @@ mod lending_protocol {
                 to_return = repaid_amount - max_repay_amount;
             }
             let sb_interest =
-                calculate_sb_interest(repaid_amount, asset_total_borrow_balance, sr_borrow_balance);
+                calculate_sb_interest(repaid_amount, asset_total_borrow_balance, sb_balance);
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
 
-            sr_borrow_balance -= sb_interest;
+            sb_balance -= sb_interest;
 
             user.on_repay(asset_address, sb_interest);
             self.user_resource_manager.update_non_fungible_data(
@@ -816,9 +809,9 @@ mod lending_protocol {
             self.update_pool_balances(
                 asset_address,
                 asset_total_deposit_balance,
-                pool_parameters.sr_deposit_balance,
+                pool_parameters.sd_balance,
                 asset_total_borrow_balance,
-                sr_borrow_balance,
+                sb_balance,
                 asset_total_reserve_balance,
             );
             let mut pool = self.pools.get(&asset_address).unwrap().clone();
@@ -829,9 +822,9 @@ mod lending_protocol {
                     pool.put(
                         repaid,
                         asset_total_deposit_balance,
-                        pool_parameters.sr_deposit_balance,
+                        pool_parameters.sd_balance,
                         asset_total_borrow_balance,
-                        sr_borrow_balance,
+                        sb_balance,
                         asset_total_reserve_balance,
                     )
                 });
@@ -904,7 +897,7 @@ mod lending_protocol {
 
             let repaid_asset_total_deposit_balance = repaid_pool_parameters.deposit_balance;
             let repaid_asset_total_borrow_balance = repaid_pool_parameters.borrow_balance;
-            let repaid_asset_total_sr_borrow_balance = repaid_pool_parameters.sr_borrow_balance;
+            let repaid_asset_total_sb_balance = repaid_pool_parameters.sb_balance;
 
             let asset_borrow_amount = user.get_borrow(repaid_resource_address);
 
@@ -922,7 +915,7 @@ mod lending_protocol {
 
             let sb_price = calculate_token_price(
                 repaid_asset_total_borrow_balance,
-                repaid_asset_total_sr_borrow_balance,
+                repaid_asset_total_sb_balance,
             );
             // Do the liquidation calculations and update the liquidated users state
             let to_return_amounts = user.on_liquidate(
@@ -964,30 +957,28 @@ mod lending_protocol {
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
             let new_total_deposit = deposit_balance - reward - platform_bonus;
-            let new_total_sr_deposit =
-                lending_parameters.sr_deposit_balance - reward - platform_bonus;
+            let new_total_sd_balance = lending_parameters.sd_balance - reward - platform_bonus;
             let new_repaid_asset_total_borrow_balance =
                 repaid_asset_total_borrow_balance - decreased_amount;
-            let new_repaid_sr_borrow_balance =
-                repaid_asset_total_sr_borrow_balance - decreased_amount;
+            let new_repaid_sb_balance = repaid_asset_total_sb_balance - decreased_amount;
             let to_return_reward =
                 self.protocol_badge
                     .authorize_with_non_fungibles(&non_fungible_local_ids, || {
                         pool.take(
                             reward,
                             new_total_deposit,
-                            new_total_sr_deposit,
+                            new_total_sd_balance,
                             borrow_balance,
-                            lending_parameters.sr_borrow_balance,
+                            lending_parameters.sb_balance,
                             reserve_balance + platform_bonus,
                         )
                     });
             self.update_pool_balances(
                 deposited_asset,
                 new_total_deposit,
-                new_total_sr_deposit,
+                new_total_sd_balance,
                 borrow_balance,
-                lending_parameters.sr_borrow_balance,
+                lending_parameters.sb_balance,
                 reserve_balance + platform_bonus,
             );
 
@@ -995,9 +986,9 @@ mod lending_protocol {
                 self.update_pool_balances(
                     deposited_asset,
                     new_total_deposit,
-                    new_total_sr_deposit,
+                    new_total_sd_balance,
                     new_repaid_asset_total_borrow_balance,
-                    new_repaid_sr_borrow_balance,
+                    new_repaid_sb_balance,
                     reserve_balance + platform_bonus,
                 );
                 self.protocol_badge
@@ -1005,9 +996,9 @@ mod lending_protocol {
                         pool.put(
                             repaid,
                             new_total_deposit,
-                            new_total_sr_deposit,
+                            new_total_sd_balance,
                             new_repaid_asset_total_borrow_balance,
-                            new_repaid_sr_borrow_balance,
+                            new_repaid_sb_balance,
                             reserve_balance + platform_bonus,
                         )
                     });
@@ -1017,9 +1008,9 @@ mod lending_protocol {
                 self.update_pool_balances(
                     repaid_resource_address,
                     repaid_asset_total_deposit_balance,
-                    repaid_pool_parameters.sr_deposit_balance,
+                    repaid_pool_parameters.sd_balance,
                     new_repaid_asset_total_borrow_balance,
-                    new_repaid_sr_borrow_balance,
+                    new_repaid_sb_balance,
                     repaid_pool_parameters.reserve_balance,
                 );
                 self.protocol_badge
@@ -1027,9 +1018,9 @@ mod lending_protocol {
                         borrowed_pool.put(
                             repaid,
                             repaid_asset_total_deposit_balance,
-                            repaid_pool_parameters.sr_deposit_balance,
+                            repaid_pool_parameters.sd_balance,
                             new_repaid_asset_total_borrow_balance,
-                            new_repaid_sr_borrow_balance,
+                            new_repaid_sb_balance,
                             repaid_pool_parameters.reserve_balance,
                         )
                     });
@@ -1062,18 +1053,18 @@ mod lending_protocol {
                         pool.take(
                             amount,
                             pool_parameters.deposit_balance,
-                            pool_parameters.sr_deposit_balance,
+                            pool_parameters.sd_balance,
                             pool_parameters.borrow_balance,
-                            pool_parameters.sr_borrow_balance,
+                            pool_parameters.sb_balance,
                             reserve_balance,
                         )
                     });
             self.update_pool_balances(
                 resource_address,
                 pool_parameters.deposit_balance,
-                pool_parameters.sr_deposit_balance,
+                pool_parameters.sd_balance,
                 pool_parameters.borrow_balance,
-                pool_parameters.sr_borrow_balance,
+                pool_parameters.sb_balance,
                 reserve_balance,
             );
             self.admin_signature_check = HashMap::new();
@@ -1192,30 +1183,30 @@ mod lending_protocol {
             &mut self,
             resource_address: ResourceAddress,
             deposit: Decimal,
-            sr_deposit: Decimal,
+            sd_balance: Decimal,
             borrow: Decimal,
-            sr_borrow: Decimal,
+            sb_balance: Decimal,
             reserve: Decimal,
         ) {
             self.pool_parameters
                 .get_mut(&resource_address)
                 .unwrap()
-                .update_balances(deposit, sr_deposit, borrow, sr_borrow, reserve);
+                .update_balances(deposit, sd_balance, borrow, sb_balance, reserve);
         }
 
         pub fn update_balances(
             &mut self,
             resource_address: ResourceAddress,
             deposit: Decimal,
-            sr_deposit: Decimal,
+            sd_balance: Decimal,
             borrow: Decimal,
-            sr_borrow: Decimal,
+            sb_balance: Decimal,
             reserve: Decimal,
         ) {
             self.pool_parameters
                 .get_mut(&resource_address)
                 .unwrap()
-                .update_balances(deposit, sr_deposit, borrow, sr_borrow, reserve);
+                .update_balances(deposit, sd_balance, borrow, sb_balance, reserve);
         }
 
         pub fn lock_pool(

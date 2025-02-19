@@ -52,34 +52,34 @@ impl UserData {
         Self::update_map(&mut self.borrows, res_address, value);
     }
 
-    pub fn on_deposit(&mut self, resource_address: ResourceAddress, sr_deposit_increase: Decimal) {
-        let mut sr_deposit = self.get_deposit(resource_address);
-        sr_deposit += sr_deposit_increase;
-        self.update_deposit(resource_address, sr_deposit);
+    pub fn on_deposit(&mut self, resource_address: ResourceAddress, sd_balance_increase: Decimal) {
+        let mut sd_balance = self.get_deposit(resource_address);
+        sd_balance += sd_balance_increase;
+        self.update_deposit(resource_address, sd_balance);
     }
 
-    pub fn on_withdraw(&mut self, resource_address: ResourceAddress, sr_deposit_decrease: Decimal) {
-        let mut sr_deposit = self.get_deposit(resource_address);
-        sr_deposit -= sr_deposit_decrease;
-        if sr_deposit < Decimal::ZERO {
+    pub fn on_withdraw(&mut self, resource_address: ResourceAddress, sd_balance_decrease: Decimal) {
+        let mut sd_balance = self.get_deposit(resource_address);
+        sd_balance -= sd_balance_decrease;
+        if sd_balance < Decimal::ZERO {
             panic!("Amount is greater than deposit balance");
         }
-        self.update_deposit(resource_address, sr_deposit);
+        self.update_deposit(resource_address, sd_balance);
     }
 
-    pub fn on_borrow(&mut self, resource_address: ResourceAddress, sr_borrow_increase: Decimal) {
-        let mut sr_borrow = self.get_borrow(resource_address);
-        sr_borrow += sr_borrow_increase;
-        self.update_borrow(resource_address, sr_borrow);
+    pub fn on_borrow(&mut self, resource_address: ResourceAddress, sb_balance_increase: Decimal) {
+        let mut sb_balance = self.get_borrow(resource_address);
+        sb_balance += sb_balance_increase;
+        self.update_borrow(resource_address, sb_balance);
     }
 
-    pub fn on_repay(&mut self, resource_address: ResourceAddress, sr_borrow_decrease: Decimal) {
-        let mut sr_borrow = self.get_borrow(resource_address);
-        sr_borrow -= sr_borrow_decrease;
-        if sr_borrow < Decimal::ZERO {
-            sr_borrow = Decimal::ZERO;
+    pub fn on_repay(&mut self, resource_address: ResourceAddress, sb_balance_decrease: Decimal) {
+        let mut sb_balance = self.get_borrow(resource_address);
+        sb_balance -= sb_balance_decrease;
+        if sb_balance < Decimal::ZERO {
+            sb_balance = Decimal::ZERO;
         }
-        self.update_borrow(resource_address, sr_borrow);
+        self.update_borrow(resource_address, sb_balance);
     }
 
     pub fn on_liquidate_repay(
@@ -89,19 +89,19 @@ impl UserData {
         cost_of_asset_in_terms_of_xrd: Decimal,
         sb_price: Decimal,
     ) -> Decimal {
-        let sr_borrow = self.get_borrow(resource_address);
+        let sb_balance = self.get_borrow(resource_address);
         // Increase borrow balance by interests accrued
-        let mut new_sr_borrow = sr_borrow * sb_price;
-        let mut interest = new_sr_borrow - sr_borrow;
+        let mut new_sb_balance = sb_balance * sb_price;
+        let mut interest = new_sb_balance - sb_balance;
         interest *= cost_of_asset_in_terms_of_xrd;
-        new_sr_borrow *= cost_of_asset_in_terms_of_xrd;
+        new_sb_balance *= cost_of_asset_in_terms_of_xrd;
         // Repay the loan
-        if new_sr_borrow < amount {
+        if new_sb_balance < amount {
             panic!("Amount is greater than borrow balance");
         } else {
-            new_sr_borrow -= amount;
-            new_sr_borrow /= cost_of_asset_in_terms_of_xrd;
-            self.update_borrow(resource_address.clone(), new_sr_borrow);
+            new_sb_balance -= amount;
+            new_sb_balance /= cost_of_asset_in_terms_of_xrd;
+            self.update_borrow(resource_address.clone(), new_sb_balance);
             interest
         }
     }
@@ -199,17 +199,17 @@ impl UserData {
         // Iterate over each asset and calculate the amount of collateral and loan available from each
         for (asset_address, parameters) in pool_parameters {
             let cost_of_asset_in_terms_of_xrd = prices.get(asset_address).unwrap();
-            let sr_deposit_balance = self.get_deposit(asset_address.clone());
-            if sr_deposit_balance != Decimal::ZERO {
+            let sd_balance = self.get_deposit(asset_address.clone());
+            if sd_balance != Decimal::ZERO {
                 let ltv_ratio = &parameters.ltv_ratio;
 
-                let asset_value_in_xrd = sr_deposit_balance * *cost_of_asset_in_terms_of_xrd;
+                let asset_value_in_xrd = sd_balance * *cost_of_asset_in_terms_of_xrd;
                 let asset_collateral = asset_value_in_xrd * *ltv_ratio;
                 user_collateral_sum += asset_collateral;
             }
-            let sr_borrow_balance = self.get_borrow(asset_address.clone());
-            if sr_borrow_balance != Decimal::ZERO {
-                let asset_loan = sr_borrow_balance * *cost_of_asset_in_terms_of_xrd;
+            let sb_balance = self.get_borrow(asset_address.clone());
+            if sb_balance != Decimal::ZERO {
+                let asset_loan = sb_balance * *cost_of_asset_in_terms_of_xrd;
                 user_loan_sum += asset_loan;
             }
         }
@@ -243,7 +243,7 @@ impl UserData {
             .for_each(|(_key, value)| {
                 let parameters = pool_parameters.get(&_key).unwrap().clone();
                 let cost_of_asset_in_terms_of_xrd = prices.get(&_key).unwrap();
-                let sd_price = parameters.deposit_balance / parameters.sr_deposit_balance;
+                let sd_price = parameters.deposit_balance / parameters.sd_balance;
 
                 let balance = value * sd_price;
                 deposit += balance * *cost_of_asset_in_terms_of_xrd;
@@ -253,7 +253,7 @@ impl UserData {
             .for_each(|(_key, value)| {
                 let parameters = pool_parameters.get(&_key).unwrap().clone();
                 let cost_of_asset_in_terms_of_xrd = prices.get(&_key).unwrap();
-                let sb_price = parameters.borrow_balance / parameters.sr_borrow_balance;
+                let sb_price = parameters.borrow_balance / parameters.sb_balance;
 
                 let balance = value * sb_price;
                 borrow += balance * *cost_of_asset_in_terms_of_xrd;
