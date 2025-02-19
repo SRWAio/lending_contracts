@@ -16,21 +16,35 @@ pub struct UserBadge {
 }
 
 pub fn create_admin_badge(
-    owner_rule: AccessRule,
+    protocol_rule: AccessRule,
+    component_rule: AccessRule,
+    admin_rule: AccessRule,
     address_reservation: GlobalAddressReservation,
 ) -> NonFungibleBucket {
     ResourceBuilder::new_integer_non_fungible(OwnerRole::None)
         .metadata(metadata!(
             roles {
-                metadata_setter => owner_rule.clone();
-                metadata_setter_updater => owner_rule.clone();
-                metadata_locker => owner_rule.clone();
-                metadata_locker_updater => owner_rule;
+                metadata_setter => admin_rule.clone();
+                metadata_setter_updater => admin_rule.clone();
+                metadata_locker => admin_rule.clone();
+                metadata_locker_updater => admin_rule.clone();
             },
             init {
                 "name" => "Admin Badge", locked;
             }
         ))
+        .mint_roles(mint_roles! {
+          minter => component_rule.clone();
+          minter_updater => protocol_rule.clone();
+        })
+        .burn_roles(burn_roles! {
+          burner => component_rule.clone();
+          burner_updater => protocol_rule.clone();
+        })
+        .non_fungible_data_update_roles(non_fungible_data_update_roles! {
+          non_fungible_data_updater => component_rule.clone();
+          non_fungible_data_updater_updater => protocol_rule.clone();
+        })
         .with_address(address_reservation)
         .mint_initial_supply([
             (
@@ -88,16 +102,17 @@ pub fn create_protocol_badge(owner_rule: AccessRule) -> NonFungibleBucket {
 }
 
 pub fn create_user_resource_manager(
-    owner_rule: AccessRule,
+    protocol_rule: AccessRule,
     component_rule: AccessRule,
+    admin_rule: AccessRule,
 ) -> NonFungibleResourceManager {
     ResourceBuilder::new_integer_non_fungible::<UserData>(OwnerRole::None)
         .metadata(metadata!(
             roles {
-                metadata_setter => owner_rule.clone();
-                metadata_setter_updater => owner_rule.clone();
-                metadata_locker => owner_rule.clone();
-                metadata_locker_updater => owner_rule.clone();
+                metadata_setter => admin_rule.clone();
+                metadata_setter_updater => admin_rule.clone();
+                metadata_locker => admin_rule.clone();
+                metadata_locker_updater => admin_rule.clone();
             },
             init {
                 "name" => "SRWA Sandbox Badge v2".to_string(), updatable;
@@ -108,15 +123,15 @@ pub fn create_user_resource_manager(
         ))
         .mint_roles(mint_roles! {
           minter => component_rule.clone();
-          minter_updater => owner_rule.clone();
+          minter_updater => protocol_rule.clone();
         })
         .burn_roles(burn_roles! {
           burner => component_rule.clone();
-          burner_updater => owner_rule.clone();
+          burner_updater => protocol_rule.clone();
         })
         .non_fungible_data_update_roles(non_fungible_data_update_roles! {
           non_fungible_data_updater => component_rule.clone();
-          non_fungible_data_updater_updater => owner_rule.clone();
+          non_fungible_data_updater_updater => protocol_rule.clone();
         })
         .create_with_no_initial_supply()
         .into()

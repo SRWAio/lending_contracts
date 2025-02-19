@@ -59,7 +59,6 @@ mod lending_protocol {
             update_pool_parameters => restrict_to: [admin];
             update_balances => restrict_to: [admin];
             update_pool_settings => restrict_to: [admin];
-            update_resource_manager_roles => restrict_to: [admin];
             lock_pool => restrict_to: [admin];
         }
     }
@@ -74,6 +73,7 @@ mod lending_protocol {
         admin_signature_check: HashMap<NonFungibleLocalId, bool>,
         admin_badge_id_counter: u64,
         admin_badge_address: ResourceAddress,
+        admin_resource_manager: NonFungibleResourceManager,
         user_resource_manager: NonFungibleResourceManager,
         pool_parameters: HashMap<ResourceAddress, PoolParameters>,
         ltv_ratios: HashMap<ResourceAddress, Decimal>,
@@ -95,24 +95,34 @@ mod lending_protocol {
             // Admin will be able to create lending pools, update pool configurations and update operating status
             let admin_rule: AccessRule = rule!(require(admin_badge_address));
 
-            let admin_badge =
-                create_admin_badge(admin_rule.clone(), admin_badge_address_reservation);
-
             let protocol_badge = create_protocol_badge(admin_rule.clone());
             let protocol_rule: AccessRule = rule!(require(protocol_badge.resource_address()));
-            let user_resource_manager =
-                create_user_resource_manager(protocol_rule.clone(), component_rule.clone());
+
+            let admin_badges = create_admin_badge(
+                protocol_rule.clone(),
+                component_rule.clone(),
+                admin_rule.clone(),
+                admin_badge_address_reservation,
+            );
+            let admin_resource_manager =
+                NonFungibleResourceManager::from(admin_badges.resource_address());
+            let user_resource_manager = create_user_resource_manager(
+                protocol_rule.clone(),
+                component_rule.clone(),
+                admin_rule.clone(),
+            );
 
             // *  Instantiate our component with the previously created resources and addresses * //
             Self {
                 protocol_badge: NonFungibleVault::with_bucket(protocol_badge),
                 pools: HashMap::new(),
+                admin_resource_manager,
                 user_resource_manager,
                 admin_rule: admin_rule.clone(),
                 component_rule: component_rule.clone(),
                 protocol_rule: protocol_rule,
                 admin_signature_check: HashMap::new(),
-                admin_badge_address: admin_badge.resource_address(),
+                admin_badge_address: admin_badges.resource_address(),
                 admin_badge_id_counter: 5,
                 pool_parameters: HashMap::new(),
                 oracle_address,
@@ -134,7 +144,7 @@ mod lending_protocol {
             ))
             .globalize();
 
-            admin_badge
+            admin_badges
         }
 
         pub fn instantiate_new_version(
@@ -151,18 +161,23 @@ mod lending_protocol {
             let admin_rule: AccessRule = rule!(require(admin_badge_address));
             let protocol_rule: AccessRule = rule!(require(protocol_badge.resource_address()));
             let user_resource_manager: NonFungibleResourceManager = user_badge_address.into();
+            let admin_resource_manager: NonFungibleResourceManager = admin_badge_address.into();
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 protocol_badge.non_fungible_local_ids();
             protocol_badge.authorize_with_non_fungibles(&non_fungible_local_ids, || {
                 user_resource_manager.set_mintable(component_rule.clone());
                 user_resource_manager.set_burnable(component_rule.clone());
-                user_resource_manager.set_updatable_non_fungible_data(component_rule.clone())
+                user_resource_manager.set_updatable_non_fungible_data(component_rule.clone());
+                admin_resource_manager.set_mintable(component_rule.clone());
+                admin_resource_manager.set_burnable(component_rule.clone());
+                admin_resource_manager.set_updatable_non_fungible_data(component_rule.clone())
             });
             // *  Instantiate our component with the previously created resources and addresses * //
             Self {
                 protocol_badge: NonFungibleVault::with_bucket(protocol_badge),
                 pools: HashMap::new(),
                 user_resource_manager,
+                admin_resource_manager,
                 admin_rule: admin_rule.clone(),
                 component_rule: component_rule.clone(),
                 admin_signature_check: HashMap::new(),
@@ -1100,26 +1115,6 @@ mod lending_protocol {
             self.admin_badge_id_counter += 1;
             self.admin_signature_check = HashMap::new();
             new_admin_badge
-        }
-
-        pub fn update_resource_manager_roles(&mut self) {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
-            }
-            let component_rule = self.component_rule.clone();
-            let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
-                self.protocol_badge.non_fungible_local_ids(1);
-            self.protocol_badge
-                .authorize_with_non_fungibles(&non_fungible_local_ids, || {
-                    self.user_resource_manager
-                        .set_mintable(component_rule.clone());
-                    self.user_resource_manager
-                        .set_burnable(component_rule.clone());
-                    self.user_resource_manager
-                        .set_updatable_non_fungible_data(component_rule.clone())
-                });
-            self.admin_signature_check = HashMap::new();
         }
 
         fn is_approved_by_admins(&mut self) -> bool {
