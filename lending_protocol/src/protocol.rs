@@ -1109,29 +1109,6 @@ mod lending_protocol {
             new_admin_badge
         }
 
-        pub fn recall_nft(
-            &mut self,
-            user_badge: Proof,
-            nft_id: NonFungibleLocalId,
-        ) -> NonFungibleBucket {
-            // Ensure the caller is an admin
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if !is_approved_by_admins {
-                panic!("Admin functions must be approved by at least 3 admins");
-            }
-
-            // Get the resource manager for the user badges
-            let user_resource_manager = self.user_resource_manager.clone();
-
-            // Recall the NFT
-            let recalled_nft = user_resource_manager.recall_non_fungible(&nft_id);
-
-            // Reset the admin signature check
-            self.admin_signature_check = HashMap::new();
-
-            recalled_nft
-        }
-
         fn is_approved_by_admins(&mut self) -> bool {
             let singature_count = self.admin_signature_check.len();
             if singature_count < 3 {
