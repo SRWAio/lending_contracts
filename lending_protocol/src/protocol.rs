@@ -664,7 +664,8 @@ mod lending_protocol {
             {
                 max_borrow = user_available_collateral;
             } else {
-                max_borrow = pool_parameters.max_borrow_percent * pool_parameters.deposit_balance;
+                max_borrow = pool_parameters.max_borrow_percent * pool_parameters.deposit_balance
+                    - total_collateral_and_loan.1;
             }
             if amount > max_borrow {
                 panic!("Max borrow amount is {}: ", max_borrow);
