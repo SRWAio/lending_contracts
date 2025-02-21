@@ -336,7 +336,7 @@ mod lending_protocol {
             asset_total_deposit_balance += interests.2;
 
             let sd_interest =
-                calculate_sd_interest(asset.amount(), asset_total_deposit_balance, sd_balance);
+                calculate_s_interest(asset.amount(), asset_total_deposit_balance, sd_balance);
             sd_balance += sd_interest;
             let mut user_count = match self.user_resource_manager.total_supply() {
                 Some(value) => value,
@@ -428,7 +428,7 @@ mod lending_protocol {
             asset_total_deposit_balance += interests.2;
 
             let sd_interest =
-                calculate_sd_interest(asset.amount(), asset_total_deposit_balance, sd_balance);
+                calculate_s_interest(asset.amount(), asset_total_deposit_balance, sd_balance);
             sd_balance += sd_interest;
             let manager_address = self.user_resource_manager.address();
             if manager_address != user_badge_resource_address {
@@ -557,8 +557,7 @@ mod lending_protocol {
                 pool_parameters.reserve_factor,
             );
             asset_total_deposit_balance += interests.2;
-            let sd_interest =
-                calculate_sd_interest(amount, asset_total_deposit_balance, sd_balance);
+            let sd_interest = calculate_s_interest(amount, asset_total_deposit_balance, sd_balance);
             asset_total_borrow_balance += interests.0;
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance -= amount;
@@ -690,7 +689,7 @@ mod lending_protocol {
                 pool_parameters.reserve_factor,
             );
             asset_total_borrow_balance += interests.0;
-            let sb_interest = calculate_sb_interest(amount, asset_total_borrow_balance, sb_balance);
+            let sb_interest = calculate_s_interest(amount, asset_total_borrow_balance, sb_balance);
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
             asset_total_borrow_balance += amount;
@@ -787,7 +786,7 @@ mod lending_protocol {
                 to_return = repaid_amount - max_repay_amount;
             }
             let sb_interest =
-                calculate_sb_interest(repaid_amount, asset_total_borrow_balance, sb_balance);
+                calculate_s_interest(repaid_amount, asset_total_borrow_balance, sb_balance);
             asset_total_reserve_balance += interests.1;
             asset_total_deposit_balance += interests.2;
 

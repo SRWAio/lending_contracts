@@ -56,16 +56,6 @@ pub fn calculate_interests(
     (borrow_interest, reserve_interest, deposit_interest)
 }
 
-pub fn _calculate_reserve_interest(borrow_interest: Decimal, reserve_factor: Decimal) -> Decimal {
-    let reserve_interest = borrow_interest * reserve_factor;
-    reserve_interest
-}
-
-pub fn _calculate_deposit_interest(borrow_interest: Decimal, reserve_interest: Decimal) -> Decimal {
-    let deposit_interest = borrow_interest - reserve_interest;
-    deposit_interest
-}
-
 pub fn calculate_token_price(total: Decimal, total_s: Decimal) -> Decimal {
     let mut token_price = Decimal::one();
     if total_s != Decimal::zero() {
@@ -74,32 +64,13 @@ pub fn calculate_token_price(total: Decimal, total_s: Decimal) -> Decimal {
     token_price
 }
 
-pub fn calculate_sd_interest(
-    deposit_amount: Decimal,
-    total_deposit: Decimal,
-    total_sd: Decimal,
-) -> Decimal {
-    let sd_interest;
-    if total_deposit == Decimal::zero() {
-        sd_interest = deposit_amount;
+pub fn calculate_s_interest(amount: Decimal, total: Decimal, total_s: Decimal) -> Decimal {
+    let s_interest;
+    if total == Decimal::zero() {
+        s_interest = amount;
     } else {
-        let sd_price = total_deposit / total_sd;
-        sd_interest = deposit_amount / sd_price;
+        let s_price = total / total_s;
+        s_interest = amount / s_price;
     }
-    sd_interest
-}
-
-pub fn calculate_sb_interest(
-    borrow_amount: Decimal,
-    total_borrow: Decimal,
-    total_sb: Decimal,
-) -> Decimal {
-    let sb_interest;
-    if total_borrow == Decimal::zero() {
-        sb_interest = borrow_amount;
-    } else {
-        let sb_price = total_borrow / total_sb;
-        sb_interest = borrow_amount / sb_price;
-    }
-    sb_interest
+    s_interest
 }
