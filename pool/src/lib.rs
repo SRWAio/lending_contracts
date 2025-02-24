@@ -66,7 +66,8 @@ mod pool {
             self.sb_balance = sb_balance;
             self.reserve = reserve;
             self.updated_at = Runtime::current_epoch().number();
-            self.liquidity_pool.take(amount)
+            self.liquidity_pool
+                .take_advanced(amount, WithdrawStrategy::Rounded(RoundingMode::ToZero))
         }
 
         pub fn put(

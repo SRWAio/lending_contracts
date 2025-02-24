@@ -797,7 +797,8 @@ mod lending_protocol {
                 Runtime::current_epoch().number(),
             );
             asset_total_borrow_balance -= repaid_amount;
-            let return_bucket = repaid.take(to_return);
+            let return_bucket =
+                repaid.take_advanced(to_return, WithdrawStrategy::Rounded(RoundingMode::ToZero));
             self.update_pool_balances(
                 asset_address,
                 asset_total_deposit_balance,
