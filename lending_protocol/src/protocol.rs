@@ -64,7 +64,7 @@ mod lending_protocol {
     }
 
     struct LendingProtocol {
-        pools: HashMap<ResourceAddress, Global<Pool>>,
+        pools: KeyValueStore<ResourceAddress, Global<Pool>>,
         protocol_badge: NonFungibleVault,
         admin_rule: AccessRule,
         component_rule: AccessRule,
@@ -75,7 +75,7 @@ mod lending_protocol {
         admin_badge_address: ResourceAddress,
         admin_resource_manager: NonFungibleResourceManager,
         user_resource_manager: NonFungibleResourceManager,
-        pool_parameters: HashMap<ResourceAddress, PoolParameters>,
+        pool_parameters: KeyValueStore<ResourceAddress, PoolParameters>,
         ltv_ratios: HashMap<ResourceAddress, Decimal>,
     }
 
@@ -86,13 +86,10 @@ mod lending_protocol {
                 Runtime::allocate_component_address(LendingProtocol::blueprint_id());
             let component_rule = rule!(require(global_caller(protocol_component_address)));
 
-            // * Create admin badge * //
-
             // Get address reservation for the admin badge resource address
             let (admin_badge_address_reservation, admin_badge_address) =
                 Runtime::allocate_non_fungible_address();
 
-            // Admin will be able to create lending pools, update pool configurations and update operating status
             let admin_rule: AccessRule = rule!(require(admin_badge_address));
 
             let protocol_badge = create_protocol_badge(admin_rule.clone());
@@ -112,10 +109,9 @@ mod lending_protocol {
                 admin_rule.clone(),
             );
 
-            // *  Instantiate our component with the previously created resources and addresses * //
             Self {
                 protocol_badge: NonFungibleVault::with_bucket(protocol_badge),
-                pools: HashMap::new(),
+                pools: KeyValueStore::new(),
                 admin_resource_manager,
                 user_resource_manager,
                 admin_rule: admin_rule.clone(),
@@ -124,7 +120,7 @@ mod lending_protocol {
                 admin_signature_check: HashMap::new(),
                 admin_badge_address: admin_badges.resource_address(),
                 admin_badge_id_counter: 5,
-                pool_parameters: HashMap::new(),
+                pool_parameters: KeyValueStore::new(),
                 oracle_address,
                 ltv_ratios: HashMap::new(),
             }
@@ -157,7 +153,6 @@ mod lending_protocol {
             let (protocol_component_address_reservation, protocol_component_address) =
                 Runtime::allocate_component_address(LendingProtocol::blueprint_id());
             let component_rule = rule!(require(global_caller(protocol_component_address)));
-            // Admin will be able to create lending pools, update pool configurations and update operating status
             let admin_rule: AccessRule = rule!(require(admin_badge_address));
             let protocol_rule: AccessRule = rule!(require(protocol_badge.resource_address()));
             let user_resource_manager: NonFungibleResourceManager = user_badge_address.into();
@@ -172,10 +167,9 @@ mod lending_protocol {
                 admin_resource_manager.set_burnable(component_rule.clone());
                 admin_resource_manager.set_updatable_non_fungible_data(component_rule.clone())
             });
-            // *  Instantiate our component with the previously created resources and addresses * //
             Self {
                 protocol_badge: NonFungibleVault::with_bucket(protocol_badge),
-                pools: HashMap::new(),
+                pools: KeyValueStore::new(),
                 user_resource_manager,
                 admin_resource_manager,
                 admin_rule: admin_rule.clone(),
@@ -184,7 +178,7 @@ mod lending_protocol {
                 protocol_rule,
                 admin_badge_address,
                 admin_badge_id_counter: 5,
-                pool_parameters: HashMap::new(),
+                pool_parameters: KeyValueStore::new(),
                 oracle_address,
                 ltv_ratios: HashMap::new(),
             }
@@ -486,7 +480,6 @@ mod lending_protocol {
             amount: Decimal,
             user_badge: Proof,
         ) -> Bucket {
-            //Get user badge
             let user_badge_resource_address = user_badge.resource_address();
             let manager_address = self.user_resource_manager.address();
 
@@ -526,7 +519,7 @@ mod lending_protocol {
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
             let total_collateral_and_loan =
-                user.calculate_total_collateral_and_loan(&self.pool_parameters, prices.clone());
+                user.calculate_total_collateral_and_loan(&self.ltv_ratios, prices.clone());
             let user_available_collateral =
                 total_collateral_and_loan.0 - total_collateral_and_loan.1;
             let withdrawable_amount_in_xrd = user_available_collateral / asset_ltv_ratio;
@@ -606,7 +599,6 @@ mod lending_protocol {
             amount: Decimal,
             user_badge: Proof,
         ) -> Bucket {
-            //Get user data
             let user_badge_resource_address = user_badge.resource_address();
             let manager_address = self.user_resource_manager.address();
 
@@ -648,7 +640,7 @@ mod lending_protocol {
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
             let total_collateral_and_loan =
-                user.calculate_total_collateral_and_loan(&self.pool_parameters, prices.clone());
+                user.calculate_total_collateral_and_loan(&self.ltv_ratios, prices.clone());
             let user_available_collateral =
                 total_collateral_and_loan.0 - total_collateral_and_loan.1;
             assert!(
@@ -769,7 +761,6 @@ mod lending_protocol {
                 borrow_apr,
                 pool_parameters.reserve_factor,
             );
-            //TO DO: Calculate interest balance
             let sb_price = calculate_token_price(asset_total_borrow_balance, sb_balance);
             asset_total_borrow_balance += interests.0;
             let non_fungible_id: NonFungibleLocalId = user_badge
@@ -868,7 +859,7 @@ mod lending_protocol {
                 }
                 prices.insert(res_address, price_in_xrd);
             }
-            let loan_limit_used = user.get_loan_limit_used(&self.pool_parameters, prices.clone());
+            let loan_limit_used = user.get_loan_limit_used(&self.ltv_ratios, prices.clone());
 
             if loan_limit_used == Decimal::ZERO {
                 panic!("No borrow from the user");
@@ -886,8 +877,6 @@ mod lending_protocol {
             let borrow_amount_in_xrd = deposit_and_borrow_in_xrd.1;
 
             let deposit_amount_in_xrd = deposit_and_borrow_in_xrd.0;
-
-            //let asset_min_liquidate_value = repaid_pool_parameters.min_liquidable_value;
 
             let asset_max_liquidation_percent = repaid_pool_parameters.max_liquidation_percent;
 
@@ -930,7 +919,6 @@ mod lending_protocol {
                 liquidated_user_deposit_balance,
                 deposited_asset,
                 prices,
-                //asset_min_liquidate_value,
                 asset_borrow_amount,
                 available_liquidity,
                 sb_price,

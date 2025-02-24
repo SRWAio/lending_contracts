@@ -9,7 +9,7 @@ pub struct PoolParameters {
     pub max_liquidation_percent: Decimal,
     // Liquidation bonus
     pub liquidation_bonus: Decimal,
-
+    //Loan to value ratio
     pub ltv_ratio: Decimal,
     // Multipliers for the assets
     pub multiplier: Decimal,
@@ -41,6 +41,7 @@ pub struct PoolParameters {
     pub borrow_balance: Decimal,
     // Deposit balances
     pub deposit_balance: Decimal,
+    //Platform reserve balance
     pub reserve_balance: Decimal,
     pub sd_balance: Decimal,
     pub sb_balance: Decimal,

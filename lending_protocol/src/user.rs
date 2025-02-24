@@ -4,10 +4,10 @@ use scrypto::prelude::*;
 
 use crate::pool_parameters::PoolParameters;
 
-/// Data describing the CDP
+/// Data describing the user's positions
 #[derive(ScryptoSbor, NonFungibleData, Clone, Debug)]
 pub struct UserData {
-    /// Image to display when exploring Radix transactions
+    /// Image to display
     #[mutable]
     pub image_url: String,
 
@@ -118,7 +118,6 @@ impl UserData {
         mut liquidated_user_deposit_balance: Decimal,
         deposit_asset_address: ResourceAddress,
         prices: HashMap<ResourceAddress, Decimal>,
-        //asset_min_liquidate_value: Decimal,
         asset_borrow_amount: Decimal,
         available_liquidity: Decimal,
         sb_price: Decimal,
@@ -190,19 +189,17 @@ impl UserData {
 
     pub fn calculate_total_collateral_and_loan(
         &mut self,
-        pool_parameters: &HashMap<ResourceAddress, PoolParameters>,
+        ltv_ratios: &HashMap<ResourceAddress, Decimal>,
         prices: HashMap<ResourceAddress, Decimal>,
     ) -> (Decimal, Decimal) {
         let mut user_collateral_sum: Decimal = 0.into();
         let mut user_loan_sum: Decimal = 0.into();
 
         // Iterate over each asset and calculate the amount of collateral and loan available from each
-        for (asset_address, parameters) in pool_parameters {
+        for (asset_address, ltv_ratio) in ltv_ratios {
             let cost_of_asset_in_terms_of_xrd = prices.get(asset_address).unwrap();
             let sd_balance = self.get_deposit(asset_address.clone());
             if sd_balance != Decimal::ZERO {
-                let ltv_ratio = &parameters.ltv_ratio;
-
                 let asset_value_in_xrd = sd_balance * *cost_of_asset_in_terms_of_xrd;
                 let asset_collateral = asset_value_in_xrd * *ltv_ratio;
                 user_collateral_sum += asset_collateral;
@@ -218,10 +215,10 @@ impl UserData {
 
     pub fn get_loan_limit_used(
         &mut self,
-        pool_parameters: &HashMap<ResourceAddress, PoolParameters>,
+        ltv_ratios: &HashMap<ResourceAddress, Decimal>,
         prices: HashMap<ResourceAddress, Decimal>,
     ) -> Decimal {
-        let collateral_and_loan = self.calculate_total_collateral_and_loan(pool_parameters, prices);
+        let collateral_and_loan = self.calculate_total_collateral_and_loan(ltv_ratios, prices);
         let deposit = collateral_and_loan.0;
         let loan = collateral_and_loan.1;
         if loan == Decimal::ZERO {
@@ -233,7 +230,7 @@ impl UserData {
 
     pub fn get_deposit_and_borrow_balance_in_xrd(
         &mut self,
-        pool_parameters: &HashMap<ResourceAddress, PoolParameters>,
+        pool_parameters: &KeyValueStore<ResourceAddress, PoolParameters>,
         prices: &HashMap<ResourceAddress, Decimal>,
     ) -> (Decimal, Decimal) {
         let mut deposit = Decimal::ZERO;

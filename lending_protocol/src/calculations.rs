@@ -1,13 +1,7 @@
 use scrypto::prelude::*;
 
 pub fn get_utilisation(deposit_balance: Decimal, borrow_balance: Decimal) -> Decimal {
-    /*let borrow_precise_decimal: PreciseDecimal = borrow_balance.into();
-    let deposit_precise_decimal: PreciseDecimal = deposit_balance.into();
-
-    let utilisation_precise_decimal = borrow_precise_decimal / deposit_precise_decimal;
-    let utilisation = Decimal::from(utilisation_precise_decimal.to_string()); */
     if deposit_balance.is_zero() {
-        // Handle the case where deposit_balance is zero
         return Decimal::ZERO;
     }
     let deposit_balance = PreciseDecimal::try_from(deposit_balance).ok().unwrap();
