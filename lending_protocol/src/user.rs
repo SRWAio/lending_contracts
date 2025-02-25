@@ -261,8 +261,8 @@ impl UserData {
     fn update_map(
         map: &mut IndexMap<ResourceAddress, Decimal>,
         key: ResourceAddress,
-        units: Decimal,
+        value: Decimal,
     ) {
-        map.insert(key, units);
+        map.insert(key, value);
     }
 }

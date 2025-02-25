@@ -491,7 +491,6 @@ mod lending_protocol {
             if withdraw_locked {
                 panic!("Withdrawing is locked for now!");
             }
-
             let available_liquidity = self.available_liquidity(
                 pool_parameters.deposit_balance,
                 pool_parameters.borrow_balance,
@@ -518,6 +517,10 @@ mod lending_protocol {
             let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
+            let user_deposit_balance = user.get_deposit(resource_address);
+            if user_deposit_balance < amount {
+                panic!("User does not have enough balance to withdraw.");
+            }
             let total_collateral_and_loan =
                 user.calculate_total_collateral_and_loan(&self.ltv_ratios, prices.clone());
             let user_available_collateral =
