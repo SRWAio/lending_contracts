@@ -346,8 +346,8 @@ mod lending_protocol {
             borrows.insert(resource_address, Decimal::zero());
 
             let data = UserData {
-                name: "User Badge".into(),
-                image_url: "https://demo.srwa.io/images/badge.png".into(),
+                name: "SRWA Sandbox Badge v2 - Keep safe!".to_string(),
+                key_image_url: "https://demo.srwa.io/images/badge.png".into(),
                 deposits,
                 borrows,
                 minted_at: now,

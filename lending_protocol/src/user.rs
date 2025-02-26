@@ -9,7 +9,7 @@ use crate::pool_parameters::PoolParameters;
 pub struct UserData {
     /// Image to display
     #[mutable]
-    pub image_url: String,
+    pub key_image_url: String,
 
     /// Name of user badge
     #[mutable]

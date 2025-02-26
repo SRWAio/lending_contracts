@@ -117,7 +117,7 @@ pub fn create_user_resource_manager(
             init {
                 "name" => "SRWA Sandbox Badge v2".to_string(), updatable;
                 "description" => "SRWA Sandbox User Badge holds keys to your positions on SRWA decentralized lending. Losing keys results in losing the only access to your deposits. You can transact it to other account at your sole responsibility.", updatable;
-                "key_image_url" => "https://demo.srwa.io/images/badge.png", updatable;
+                "icon_url" => "https://demo.srwa.io/images/badge.png", updatable;
                 "version" => "1.0".to_string(), updatable;
             }
         ))
