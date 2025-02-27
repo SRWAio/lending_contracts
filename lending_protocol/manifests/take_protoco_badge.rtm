@@ -1,0 +1,29 @@
+CALL_METHOD
+    Address("account_tdx_2_12yu48ms333lrswuew89f0s7exsaj8h0sgafy7aeu58zxdpp7zmj46w")
+    "create_proof_of_non_fungibles"
+    Address("resource_tdx_2_1nflzhw86h9ulxv2lwk7vc5ygancjjw92q23he3pwqka7dge7d69smj")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#2#")
+    )
+;
+CALL_METHOD
+    Address("account_tdx_2_12yu48ms333lrswuew89f0s7exsaj8h0sgafy7aeu58zxdpp7zmj46w")
+    "create_proof_of_non_fungibles"
+    Address("resource_tdx_2_1nflzhw86h9ulxv2lwk7vc5ygancjjw92q23he3pwqka7dge7d69smj")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#2#")
+    )
+;
+POP_FROM_AUTH_ZONE
+    Proof("proof1")
+;
+CALL_METHOD
+    Address("component_tdx_2_1cze44pe9j5maeem9flv67k2s2z6xgegsgkz79enm5z4qn4730s8art")
+    "take_protocol_badge"
+;
+CALL_METHOD
+    Address("account_tdx_2_12yu48ms333lrswuew89f0s7exsaj8h0sgafy7aeu58zxdpp7zmj46w")
+    "try_deposit_batch_or_refund"
+    Expression("ENTIRE_WORKTOP")
+    Enum<0u8>()
+;

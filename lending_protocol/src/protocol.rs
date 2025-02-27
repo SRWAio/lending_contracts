@@ -508,7 +508,7 @@ mod lending_protocol {
                 pool_parameters.pool_reserve,
             );
             if available_liquidity < amount {
-                panic!("Max withdrawal amount is {}: ", available_liquidity);
+                panic!("Available liquidity is {}: ", available_liquidity);
             }
 
             let asset_ltv_ratio = pool_parameters.ltv_ratio;
@@ -529,7 +529,10 @@ mod lending_protocol {
                 .get_non_fungible_data(&non_fungible_id);
             let user_deposit_balance = user.get_deposit(resource_address);
             if user_deposit_balance < amount {
-                panic!("User does not have enough balance to withdraw.");
+                panic!(
+                    "User does not have enough deposit balance to withdraw. Max withdrawal is: {}",
+                    user_deposit_balance
+                );
             }
             let total_collateral_and_loan =
                 user.calculate_total_collateral_and_loan(&self.ltv_ratios, prices.clone());
@@ -540,7 +543,7 @@ mod lending_protocol {
             let withdrawable_amount = withdrawable_amount_in_xrd / *cost_of_asset_in_terms_of_xrd;
 
             if amount > withdrawable_amount {
-                panic!("Max withrawal amount is {}: ", withdrawable_amount);
+                panic!("Max withdrawal amount is {}: ", withdrawable_amount);
             }
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
@@ -631,7 +634,7 @@ mod lending_protocol {
                 pool_parameters.pool_reserve,
             );
             if available_liquidity < amount {
-                panic!("Max borrow amount is {}: ", available_liquidity);
+                panic!("Available liquidity amount is {}: ", available_liquidity);
             }
 
             let mut prices = HashMap::new();
@@ -788,8 +791,8 @@ mod lending_protocol {
             let mut repaid_amount = repaid.amount();
             let mut to_return = Decimal::zero();
             if repaid_amount > max_repay_amount {
-                repaid_amount = max_repay_amount;
                 to_return = repaid_amount - max_repay_amount;
+                repaid_amount = max_repay_amount;
             }
             let sb_interest =
                 calculate_s_interest(repaid_amount, asset_total_borrow_balance, sb_balance);
@@ -834,7 +837,6 @@ mod lending_protocol {
                         asset_total_reserve_balance,
                     )
                 });
-
             return_bucket
         }
 

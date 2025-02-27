@@ -1,0 +1,29 @@
+CALL_METHOD
+    Address("account_tdx_2_12yu48ms333lrswuew89f0s7exsaj8h0sgafy7aeu58zxdpp7zmj46w")
+    "withdraw_non_fungibles"
+    Address("resource_tdx_2_1nf8ehxdv0q09r55he57q7pn64l6q2rva7e72dkqymu5a4vn0lw274q")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#1#")
+    )
+;
+TAKE_NON_FUNGIBLES_FROM_WORKTOP
+    Address("resource_tdx_2_1nf8ehxdv0q09r55he57q7pn64l6q2rva7e72dkqymu5a4vn0lw274q")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#1#")
+    )
+    Bucket("bucket1")
+;
+CALL_FUNCTION
+    Address("package_tdx_2_1pkxzuulfat9tt2t9mcvtdz2kjm7g20txxlcaq8j7r5qnph43haamhn")
+    "LendingProtocol"
+    "instantiate_new_version"
+    Address("component_tdx_2_1crk923cjxv7ja8gj99rln9r4fpu0wmam54rzpgm5wfdntpe4np538r")
+    Bucket("bucket1")
+    Address("resource_tdx_2_1nf3qwsh42whskssgj2qxdjt5rk0j2edljs9f6rv68trpzk8x44suz4")
+    Address("resource_tdx_2_1nflzhw86h9ulxv2lwk7vc5ygancjjw92q23he3pwqka7dge7d69smj")
+;
+CALL_METHOD
+    Address("account_tdx_2_12yu48ms333lrswuew89f0s7exsaj8h0sgafy7aeu58zxdpp7zmj46w")
+    "deposit_batch"
+    Expression("ENTIRE_WORKTOP")
+;
