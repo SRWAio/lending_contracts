@@ -1,0 +1,11 @@
+CALL_FUNCTION
+    Address("package_tdx_2_1p5xxfyvuknrsu4udrqyuennw42t7zssd9a4f4847pycwukwnlf5w2j")
+    "LendingProtocol"
+    "instantiate"
+    Address("component_tdx_2_1crk923cjxv7ja8gj99rln9r4fpu0wmam54rzpgm5wfdntpe4np538r")
+;
+CALL_METHOD
+    Address("account_tdx_2_12yu48ms333lrswuew89f0s7exsaj8h0sgafy7aeu58zxdpp7zmj46w")
+    "deposit_batch"
+    Expression("ENTIRE_WORKTOP")
+;

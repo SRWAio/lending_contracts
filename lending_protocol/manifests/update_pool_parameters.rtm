@@ -1,0 +1,27 @@
+CALL_METHOD
+    Address("account_tdx_2_12yu48ms333lrswuew89f0s7exsaj8h0sgafy7aeu58zxdpp7zmj46w")
+    "create_proof_of_non_fungibles"
+    Address("resource_tdx_2_1nflzhw86h9ulxv2lwk7vc5ygancjjw92q23he3pwqka7dge7d69smj")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#1#")
+    )
+;
+CALL_METHOD
+    Address("component_tdx_2_1czztls5ej74x45t28u890292kd5x28ejlcl7lq72ea4xplr7r86jpc")
+    "update_pool_parameters"
+    Address("resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc")
+    Decimal("0")
+    Decimal("0.2")
+    Decimal("0.1")
+    Decimal("0.5")
+    Decimal("0.1")
+    Decimal("1")
+    Decimal("0.2")
+    Decimal("100000")
+;
+CALL_METHOD
+    Address("account_tdx_2_12yu48ms333lrswuew89f0s7exsaj8h0sgafy7aeu58zxdpp7zmj46w")
+    "try_deposit_batch_or_refund"
+    Expression("ENTIRE_WORKTOP")
+    Enum<0u8>()
+;

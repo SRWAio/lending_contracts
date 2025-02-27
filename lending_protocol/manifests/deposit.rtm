@@ -1,0 +1,37 @@
+CALL_METHOD
+    Address("account_tdx_2_12yu48ms333lrswuew89f0s7exsaj8h0sgafy7aeu58zxdpp7zmj46w")
+    "create_proof_of_non_fungibles"
+    Address("resource_tdx_2_1nf3qwsh42whskssgj2qxdjt5rk0j2edljs9f6rv68trpzk8x44suz4")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#1#")
+    )
+;
+CREATE_PROOF_FROM_AUTH_ZONE_OF_NON_FUNGIBLES
+    Address("resource_tdx_2_1nf3qwsh42whskssgj2qxdjt5rk0j2edljs9f6rv68trpzk8x44suz4")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#1#")
+    )
+    Proof("proof1")
+;
+CALL_METHOD
+    Address("account_tdx_2_12yu48ms333lrswuew89f0s7exsaj8h0sgafy7aeu58zxdpp7zmj46w")
+    "withdraw"
+    Address("resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc")
+    Decimal("10")
+;
+TAKE_FROM_WORKTOP
+    Address("resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc")
+    Decimal("10")
+    Bucket("bucket1")
+;
+CALL_METHOD
+    Address("component_tdx_2_1czztls5ej74x45t28u890292kd5x28ejlcl7lq72ea4xplr7r86jpc")
+    "deposit"
+    Bucket("bucket1")
+    Proof("proof1")
+;
+CALL_METHOD
+    Address("account_tdx_2_12yu48ms333lrswuew89f0s7exsaj8h0sgafy7aeu58zxdpp7zmj46w")
+    "deposit_batch"
+    Expression("ENTIRE_WORKTOP")
+;

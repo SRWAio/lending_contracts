@@ -210,6 +210,10 @@ mod lending_protocol {
             reserve_factor: Decimal,
             ltv_ratio: Decimal,
         ) {
+            let is_approved_by_admins = self.is_approved_by_admins();
+            if is_approved_by_admins == false {
+                panic!("Admin functions must be approved by at least 3 admins")
+            }
             self.pools.insert(resource_address, pool_component);
             let now = Runtime::current_epoch().number();
             let pool_balances = pool_component.get_pool_balances();
@@ -241,6 +245,7 @@ mod lending_protocol {
             };
             self.ltv_ratios.insert(resource_address, ltv_ratio);
             self.pool_parameters.insert(resource_address, data);
+            self.admin_signature_check = HashMap::new();
         }
 
         pub fn create_pool(
@@ -253,6 +258,10 @@ mod lending_protocol {
             reserve_factor: Decimal,
             ltv_ratio: Decimal,
         ) -> (Global<Pool>, ComponentAddress) {
+            let is_approved_by_admins = self.is_approved_by_admins();
+            if is_approved_by_admins == false {
+                panic!("Admin functions must be approved by at least 3 admins")
+            }
             let pool_component_address =
                 Blueprint::<Pool>::instantiate(self.protocol_rule.clone(), resource_address);
             self.pools
@@ -288,6 +297,7 @@ mod lending_protocol {
             };
 
             self.pool_parameters.insert(resource_address, data);
+            self.admin_signature_check = HashMap::new();
             pool_component_address
         }
 
@@ -1196,10 +1206,15 @@ mod lending_protocol {
             sb_balance: Decimal,
             reserve: Decimal,
         ) {
+            let is_approved_by_admins = self.is_approved_by_admins();
+            if is_approved_by_admins == false {
+                panic!("Admin functions must be approved by at least 3 admins")
+            }
             self.pool_parameters
                 .get_mut(&resource_address)
                 .unwrap()
                 .update_balances(deposit, sd_balance, borrow, sb_balance, reserve);
+            self.admin_signature_check = HashMap::new();
         }
 
         pub fn lock_pool(
