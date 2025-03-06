@@ -214,6 +214,27 @@ mod lending_protocol {
             if is_approved_by_admins == false {
                 panic!("Admin functions must be approved by at least 3 admins")
             }
+            assert!(
+                ltv_ratio >= 0.into() && ltv_ratio <= 1.into(),
+                "LTV must be between 0.0 and 1.0."
+            );
+            assert!(multiplier > 0.into(), "Multiplier must be greater then 0.");
+            assert!(
+                multiplier > base_multiplier,
+                "Multiplier must be greater then Base Multiplier."
+            );
+            assert!(base > 0.into(), "Base must be greater then 0.");
+            assert!(
+                reserve_factor >= 0.into() && reserve_factor <= 1.into(),
+                "Reserve Factor must be between 0.0 and 1.0."
+            );
+            assert!(
+                kink >= 0.into() && kink <= 100.into(),
+                "Kink must be between 0 and 100."
+            );
+            if self.ltv_ratios.contains_key(&resource_address) {
+                panic!("Pool already exists for this resource address.");
+            }
             self.pools.insert(resource_address, pool_component);
             let now = Runtime::current_epoch().number();
             let pool_balances = pool_component.get_pool_balances();
@@ -261,6 +282,30 @@ mod lending_protocol {
             let is_approved_by_admins = self.is_approved_by_admins();
             if is_approved_by_admins == false {
                 panic!("Admin functions must be approved by at least 3 admins")
+            }
+            assert!(
+                ltv_ratio >= 0.into() && ltv_ratio <= 1.into(),
+                "LTV must be between 0.0 and 1.0."
+            );
+            assert!(
+                multiplier > 0.into(),
+                "Asset Multiplier must be greater then 0."
+            );
+            assert!(
+                multiplier > base_multiplier,
+                "Multiplier must be greater than Base Multiplier."
+            );
+            assert!(base > 0.into(), "Base must be greater then 0.");
+            assert!(
+                reserve_factor >= 0.into() && reserve_factor <= 1.into(),
+                "Reserve Factor must be between 0.0 and 1.0."
+            );
+            assert!(
+                kink >= 0.into() && kink <= 100.into(),
+                "Kink must be between 0 and 100."
+            );
+            if self.ltv_ratios.contains_key(&resource_address) {
+                panic!("Pool already exists for this resource address.");
             }
             let pool_component_address =
                 Blueprint::<Pool>::instantiate(self.protocol_rule.clone(), resource_address);
