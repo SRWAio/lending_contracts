@@ -246,7 +246,7 @@ CALL_METHOD
 After running this command, user is created and stored in the app and if you run the command `resim show <ACCOUNT_ADDRESS>` you should see that you have the User Badge in resources.
 All information about user balances are stored in the User Badge metadata.
 
-##### Deposit
+##### deposit
 
 User can now make a deposit, run it with this command:
 
@@ -294,7 +294,7 @@ CALL_METHOD
 
 DEPOSIT_AMOUNT is decimal number of resources (XRDs) that the user wants to deposit.
 
-##### Withdraw
+##### withdraw
 
 User can withdraw the deposit or part of it by running this command:
 
@@ -336,7 +336,7 @@ CALL_METHOD
 After this transaction the amount that the user requested should be put in his account.
 Accrued interest is staying on the user account.
 
-##### Borrow
+##### borrow
 
 User can borrow using the deposited assets as collateral running this command:
 
@@ -377,7 +377,7 @@ CALL_METHOD
 WITHDRAW_AMOUNT is the amount that te user wants to borrow.
 After running this transaction, user should get the borrowed assets on his account.
 
-##### Repay
+##### repay
 
 User can repay his debt by running this command:
 
@@ -423,3 +423,184 @@ CALL_METHOD
 `
 
 If there’s some interest, it will be calculated and added to the amount that has to be repaid. If the amount that is sent by the user is smaller then the debt, app is going to calculate how much of the debt is left to be repaid, if it’s greater, it’s going to give back the rest back to the user after it takes the amount needed.
+
+##### liquidate
+
+The liquidate function allows an admin to liquidate a user's position if they are undercollateralized. This function requires admin approval.
+
+Run it with this command:
+
+`resim run "./manifests/liquidate.rtm"`
+
+`CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "create_proof_of_non_fungibles"
+    Address("<ADMIN_BADGE_ADDRESS>")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#<ADMIN_BADGE_ID>#")
+    )
+;
+CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "create_proof_of_non_fungibles"
+    Address("<ADMIN_BADGE_ADDRESS>")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#<ADMIN_BADGE_ID>#")
+    )
+;
+CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "withdraw"
+    Address("<REPAID_RESOURCE_ADDRESS>")
+    Decimal("<AMOUNT>")
+;
+TAKE_FROM_WORKTOP
+    Address("<REPAID_RESOURCE_ADDRESS>")
+    Decimal("<AMOUNT>")
+    Bucket("<BUCKET_NAME>")
+;
+CALL_METHOD
+    Address("<PROCOTOL_COMPONENT_ADDRESS>")
+    "liquidate"
+    Decimal("<LIQUIDATED_USER_ID>")
+    Bucket("<BUCKET_NAME>")
+    Address("<RESOURCE_ADDRESS_TO_RECEIVE>")
+;
+CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "try_deposit_batch_or_refund"
+    Expression("ENTIRE_WORKTOP")
+    Enum<0u8>()
+;`
+
+##### update_pool_parameters
+
+The update_pool_parameters function allows an admin to update the parameters of a pool. This function requires admin approval.
+
+Run it with this command:
+
+`resim run "./manifests/update_pool_parameters.rtm"`
+
+`CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "create_proof_of_non_fungibles"
+    Address("<ADMIN_BADGE_ADDRESS>")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#<ADMIN_BADGE_ID>#")
+    )
+;
+CALL_METHOD
+    Address("<PROTOCOL_COMPONENT_ADDRESS>")
+    "update_pool_parameters"
+    Address("<RESOURCE_ADDRESS>")
+    Decimal("<MIN_LIQUIDABLE_VALUE>")
+    Decimal("<LIQUIDATION_RESERVE_FACTOR>")
+    Decimal("<LIQUIDATION_BONUS>")
+    Decimal("<MAX_LIQUIDATION_PERCENT>")
+    Decimal("<MAX_BORROW_PERCENT>")
+    Decimal("<MIN_COLLATERAL_RATIO>")
+    Decimal("<POOL_RESERVE>")
+    Decimal("<POOL_DEPOSIT_LIMIT>")
+;
+CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "try_deposit_batch_or_refund"
+    Expression("ENTIRE_WORKTOP")
+    Enum<0u8>()
+;
+`
+
+##### update_pool_settings
+
+The update_pool_settings function allows an admin to update the settings of a pool. This function requires admin approval.
+
+Run it with this command:
+
+`resim run "./manifests/update_pool_settings.rtm"`
+
+`CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "create_proof_of_non_fungibles"
+    Address("<ADMIN_BADGE_ADDRESS>")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#<ADMIN_BADGE_ID>#")
+    )
+;
+CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "create_proof_of_non_fungibles"
+    Address("<ADMIN_BADGE_ADDRESS>")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#<ADMIN_BADGE_ID>#")
+    )
+;
+CALL_METHOD
+    Address("<PROTOCOL_COMPONENT_ADDRESS>")
+    "update_pool_settings"
+    # Asset address
+    Address("<RESOURCE_ADDRESS>")
+    # base
+    Decimal("<BASE>")
+    # base_multiplier
+    Decimal("<BASE_MULTIPLIER>")   
+    # multiplier
+    Decimal("<MULTIPLIER>")
+    # kink
+    Decimal("<KINK>)
+    # reserve_factor
+    Decimal("<RESERVE_FACTOR>")    
+    # ltv_ratio
+    Decimal("<LTV_RATIO>") 
+;
+CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "try_deposit_batch_or_refund"
+    Expression("ENTIRE_WORKTOP")
+    Enum<0u8>()
+;
+`
+
+##### lock_pool
+
+The lock_pool function allows an admin to lock a pool, preventing further interactions. This function requires admin approval.
+
+Run it with this command:
+
+`resim run "./manifests/lock_pool.rtm"`
+
+`CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "create_proof_of_non_fungibles"
+    Address("<ADMIN_BADGE_ADDRESS>")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#<ADMIN_BADGE_ID>#")
+    )
+;
+CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "create_proof_of_non_fungibles"
+    Address("<ADMIN_BADGE_ADDRESS>")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#<ADMIN_BADGE_ID>#")
+    )
+;
+CALL_METHOD
+    Address("<PROTOCOL_COMPONENT_ADDRESS>")
+    "lock_pool"
+    Address("<RESOURCE_ADDRESS>")
+    # deposit_locked
+    <TRUE_OR_FALSE>
+    # borrow_locked
+    <TRUE_OR_FALSE>
+    # deposit_locked
+    <TRUE_OR_FALSE>
+    # deposit_locked
+    <TRUE_OR_FALSE>
+;
+CALL_METHOD
+    Address("<ACCOUNT_ADDRESS>")
+    "try_deposit_batch_or_refund"
+    Expression("ENTIRE_WORKTOP")
+    Enum<0u8>()
+;
+`
