@@ -287,10 +287,7 @@ mod lending_protocol {
                 ltv_ratio >= 0.into() && ltv_ratio <= 1.into(),
                 "LTV must be between 0.0 and 1.0."
             );
-            assert!(
-                multiplier > 0.into(),
-                "Asset Multiplier must be greater then 0."
-            );
+            assert!(multiplier > 0.into(), "Multiplier must be greater then 0.");
             assert!(
                 multiplier > base_multiplier,
                 "Multiplier must be greater than Base Multiplier."
@@ -669,7 +666,7 @@ mod lending_protocol {
             let pool_parameters = self.pool_parameters.get(&asset_address).unwrap().clone();
             let borrow_locked = pool_parameters.borrow_locked;
             if borrow_locked {
-                panic!("Withdrawing is locked for now!");
+                panic!("Borrowing is locked for now!");
             }
 
             let available_liquidity = self.available_liquidity(
