@@ -251,7 +251,6 @@ mod lending_protocol {
                 max_liquidation_percent: dec!("0.5"),
                 liquidation_bonus: dec!("0.1"),
                 liquidation_reserve_factor: dec!("0.2"),
-                min_liquidable_value: dec!("6000"),
                 deposit_locked: false,
                 borrow_locked: false,
                 withdraw_locked: false,
@@ -324,7 +323,6 @@ mod lending_protocol {
                 max_liquidation_percent: dec!("0.5"),
                 liquidation_bonus: dec!("0.1"),
                 liquidation_reserve_factor: dec!("0.2"),
-                min_liquidable_value: dec!("6000"),
                 deposit_locked: false,
                 borrow_locked: false,
                 withdraw_locked: false,
@@ -1167,7 +1165,6 @@ mod lending_protocol {
         pub fn update_pool_parameters(
             &mut self,
             resource_address: ResourceAddress,
-            min_liquidable_value: Decimal,
             liquidation_reserve_factor: Decimal,
             liquidation_bonus: Decimal,
             max_liquidation_percent: Decimal,
@@ -1184,7 +1181,6 @@ mod lending_protocol {
                 .get_mut(&resource_address)
                 .unwrap()
                 .update_pool_parameters(
-                    min_liquidable_value,
                     liquidation_reserve_factor,
                     liquidation_bonus,
                     max_liquidation_percent,

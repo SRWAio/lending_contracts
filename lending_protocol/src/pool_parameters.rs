@@ -23,8 +23,6 @@ pub struct PoolParameters {
     pub kink: Decimal,
     // Per asset/editable
     pub liquidation_reserve_factor: Decimal,
-    // Minimum reasonable value to be liquidated
-    pub min_liquidable_value: Decimal,
     //Deposit lock state (true if locked)
     pub deposit_locked: bool,
     //Borrow lock state (true if locked)
@@ -48,9 +46,8 @@ pub struct PoolParameters {
     pub balances_updated_at: u64,
 }
 impl PoolParameters {
-    pub fn _get_pool_parameters(&mut self) -> (Decimal, Decimal, Decimal, Decimal, Decimal) {
+    pub fn _get_pool_parameters(&mut self) -> (Decimal, Decimal, Decimal, Decimal) {
         (
-            self.min_liquidable_value,
             self.max_liquidation_percent,
             self.liquidation_bonus,
             self.liquidation_reserve_factor,
@@ -60,7 +57,6 @@ impl PoolParameters {
 
     pub fn update_pool_parameters(
         &mut self,
-        min_liquidable_value: Decimal,
         liquidation_reserve_factor: Decimal,
         liquidation_bonus: Decimal,
         max_liquidation_percent: Decimal,
@@ -69,7 +65,6 @@ impl PoolParameters {
         pool_reserve: Decimal,
         pool_deposit_limit: Decimal,
     ) {
-        self.min_liquidable_value = min_liquidable_value;
         self.liquidation_reserve_factor = liquidation_reserve_factor;
         self.liquidation_bonus = liquidation_bonus;
         self.max_liquidation_percent = max_liquidation_percent;

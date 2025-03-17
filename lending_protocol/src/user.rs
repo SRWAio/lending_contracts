@@ -122,7 +122,6 @@ impl UserData {
         available_liquidity: Decimal,
         sb_price: Decimal,
     ) -> (Decimal, Decimal, Decimal) {
-        // Calculate the max repayment amount that's going to be used to repay users debt
         let cost_of_deposit_asset_in_terms_of_xrd = prices.get(&deposit_asset_address).unwrap();
         let cost_of_repaid_asset_in_terms_of_xrd = prices.get(&repaid_asset_address).unwrap();
         let available_liquidity_in_terms_of_xrd =
@@ -131,13 +130,8 @@ impl UserData {
         if borrow_amount * (1 + liquidation_bonus) > deposit_amount {
             max_liquidation_percent = Decimal::ONE;
         }
-        //TO DO: REMOVE
-        /*if asset_borrow_amount < asset_min_liquidate_value {
-            asset_borrow_amount *= *cost_of_repaid_asset_in_terms_of_xrd;
-            max_repayment = asset_borrow_amount;
-        } else {*/
+        // Calculate the max repayment amount that's going to be used to repay users debt
         let max_repayment = max_liquidation_percent * borrow_amount;
-        //}
         amount *= *cost_of_repaid_asset_in_terms_of_xrd;
         if amount > available_liquidity_in_terms_of_xrd {
             panic!("Amount is greater than available liquidity");
@@ -166,10 +160,6 @@ impl UserData {
             sb_price,
         );
 
-        //unsolvent user
-        /*if borrow_amount > deposit_amount {
-            liquidation_reserve_factor = Decimal::ONE;
-        }*/
         // Platform is getting the liquidation fee
         let mut platform_bonus = amount * liquidation_bonus * liquidation_reserve_factor;
         if liquidated_user_deposit_balance == Decimal::ZERO {

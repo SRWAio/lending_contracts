@@ -10,7 +10,6 @@ CALL_METHOD
     Address("component_tdx_2_1czztls5ej74x45t28u890292kd5x28ejlcl7lq72ea4xplr7r86jpc")
     "update_pool_parameters"
     Address("resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc")
-    Decimal("0")
     Decimal("0.2")
     Decimal("0.1")
     Decimal("0.5")

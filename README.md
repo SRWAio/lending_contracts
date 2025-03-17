@@ -493,7 +493,6 @@ CALL_METHOD
     Address("<PROTOCOL_COMPONENT_ADDRESS>")
     "update_pool_parameters"
     Address("<RESOURCE_ADDRESS>")
-    Decimal("<MIN_LIQUIDABLE_VALUE>")
     Decimal("<LIQUIDATION_RESERVE_FACTOR>")
     Decimal("<LIQUIDATION_BONUS>")
     Decimal("<MAX_LIQUIDATION_PERCENT>")
