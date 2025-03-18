@@ -118,12 +118,15 @@ impl UserData {
         mut liquidated_user_deposit_balance: Decimal,
         deposit_asset_address: ResourceAddress,
         prices: HashMap<ResourceAddress, Decimal>,
-        asset_borrow_amount: Decimal,
         available_liquidity: Decimal,
         sb_price: Decimal,
     ) -> (Decimal, Decimal, Decimal) {
-        let cost_of_deposit_asset_in_terms_of_xrd = prices.get(&deposit_asset_address).unwrap();
-        let cost_of_repaid_asset_in_terms_of_xrd = prices.get(&repaid_asset_address).unwrap();
+        let cost_of_deposit_asset_in_terms_of_xrd = prices
+            .get(&deposit_asset_address)
+            .expect("Price for deposit asset address not found in prices map");
+        let cost_of_repaid_asset_in_terms_of_xrd = prices
+            .get(&repaid_asset_address)
+            .expect("Price for repaid asset address not found in prices map");
         let available_liquidity_in_terms_of_xrd =
             available_liquidity * *cost_of_deposit_asset_in_terms_of_xrd;
         //for unsolvent users
@@ -141,14 +144,11 @@ impl UserData {
         if amount > max_repayment {
             panic!("Amount is greater than max repayment");
         }
-        let max_liquidating_amount: Decimal;
-        if liquidated_user_deposit_balance == Decimal::ZERO {
-            max_liquidating_amount = asset_borrow_amount;
-        } else {
-            max_liquidating_amount = liquidated_user_deposit_balance
-                / ((liquidation_bonus * liquidation_reserve_factor)
-                    + (1 + liquidation_bonus * (1 - liquidation_reserve_factor)));
-        }
+
+        let max_liquidating_amount = liquidated_user_deposit_balance
+            / ((liquidation_bonus * liquidation_reserve_factor)
+                + (1 + liquidation_bonus * (1 - liquidation_reserve_factor)));
+
         if amount > max_liquidating_amount {
             panic!("Amount is greater than max liquidating amount");
         }
@@ -162,9 +162,6 @@ impl UserData {
 
         // Platform is getting the liquidation fee
         let mut platform_bonus = amount * liquidation_bonus * liquidation_reserve_factor;
-        if liquidated_user_deposit_balance == Decimal::ZERO {
-            platform_bonus = Decimal::ZERO;
-        }
         // Liquidator is getting liquidation reward and possible change from repaiment
         let mut reward = amount * (1 + liquidation_bonus * (1 - liquidation_reserve_factor));
         reward /= *cost_of_deposit_asset_in_terms_of_xrd;

@@ -945,8 +945,6 @@ mod lending_protocol {
             let repaid_asset_total_borrow_balance = repaid_pool_parameters.borrow_balance;
             let repaid_asset_total_sb_balance = repaid_pool_parameters.sb_balance;
 
-            let asset_borrow_amount = user.get_borrow(repaid_resource_address);
-
             let deposit_balance = lending_parameters.deposit_balance;
             let borrow_balance = lending_parameters.borrow_balance;
             let reserve_balance = lending_parameters.reserve_balance;
@@ -975,7 +973,6 @@ mod lending_protocol {
                 liquidated_user_deposit_balance,
                 deposited_asset,
                 prices,
-                asset_borrow_amount,
                 available_liquidity,
                 sb_price,
             );
