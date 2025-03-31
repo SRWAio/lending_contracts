@@ -591,9 +591,9 @@ CALL_METHOD
     <TRUE_OR_FALSE>
     # borrow_locked
     <TRUE_OR_FALSE>
-    # deposit_locked
+    # withdraw_locked
     <TRUE_OR_FALSE>
-    # deposit_locked
+    # repay_locked
     <TRUE_OR_FALSE>
 ;
 CALL_METHOD
