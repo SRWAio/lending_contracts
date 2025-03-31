@@ -176,6 +176,7 @@ impl UserData {
 
     pub fn calculate_total_collateral_and_loan(
         &mut self,
+        pool_parameters: &KeyValueStore<ResourceAddress, PoolParameters>,
         ltv_ratios: &HashMap<ResourceAddress, Decimal>,
         prices: HashMap<ResourceAddress, Decimal>,
     ) -> (Decimal, Decimal) {
@@ -185,15 +186,18 @@ impl UserData {
         // Iterate over each asset and calculate the amount of collateral and loan available from each
         for (asset_address, ltv_ratio) in ltv_ratios {
             let cost_of_asset_in_terms_of_xrd = prices.get(asset_address).unwrap();
+            let parameters = pool_parameters.get(asset_address).unwrap().clone();
             let sd_balance = self.get_deposit(asset_address.clone());
             if sd_balance != Decimal::ZERO {
-                let asset_value_in_xrd = sd_balance * *cost_of_asset_in_terms_of_xrd;
-                let asset_collateral = asset_value_in_xrd * *ltv_ratio;
-                user_collateral_sum += asset_collateral;
+                let sd_price = parameters.deposit_balance / parameters.sd_balance;
+                let asset_value_in_xrd =
+                    sd_balance * sd_price * *cost_of_asset_in_terms_of_xrd * *ltv_ratio;
+                user_collateral_sum += asset_value_in_xrd;
             }
             let sb_balance = self.get_borrow(asset_address.clone());
             if sb_balance != Decimal::ZERO {
-                let asset_loan = sb_balance * *cost_of_asset_in_terms_of_xrd;
+                let sb_price = parameters.borrow_balance / parameters.sb_balance;
+                let asset_loan = sb_balance * sb_price * *cost_of_asset_in_terms_of_xrd;
                 user_loan_sum += asset_loan;
             }
         }
@@ -202,10 +206,12 @@ impl UserData {
 
     pub fn get_loan_limit_used(
         &mut self,
+        pool_parameters: &KeyValueStore<ResourceAddress, PoolParameters>,
         ltv_ratios: &HashMap<ResourceAddress, Decimal>,
         prices: HashMap<ResourceAddress, Decimal>,
     ) -> Decimal {
-        let collateral_and_loan = self.calculate_total_collateral_and_loan(ltv_ratios, prices);
+        let collateral_and_loan =
+            self.calculate_total_collateral_and_loan(pool_parameters, ltv_ratios, prices);
         let deposit = collateral_and_loan.0;
         let loan = collateral_and_loan.1;
         if loan == Decimal::ZERO {

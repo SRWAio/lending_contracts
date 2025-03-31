@@ -574,8 +574,11 @@ mod lending_protocol {
                     user_deposit_balance
                 );
             }
-            let total_collateral_and_loan =
-                user.calculate_total_collateral_and_loan(&self.ltv_ratios, prices.clone());
+            let total_collateral_and_loan = user.calculate_total_collateral_and_loan(
+                &self.pool_parameters,
+                &self.ltv_ratios,
+                prices.clone(),
+            );
             let user_available_collateral =
                 total_collateral_and_loan.0 - total_collateral_and_loan.1;
             let withdrawable_amount_in_xrd = user_available_collateral / asset_ltv_ratio;
@@ -695,8 +698,11 @@ mod lending_protocol {
             let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
-            let total_collateral_and_loan =
-                user.calculate_total_collateral_and_loan(&self.ltv_ratios, prices.clone());
+            let total_collateral_and_loan = user.calculate_total_collateral_and_loan(
+                &self.pool_parameters,
+                &self.ltv_ratios,
+                prices.clone(),
+            );
             let user_available_collateral =
                 total_collateral_and_loan.0 - total_collateral_and_loan.1;
             assert!(
@@ -915,7 +921,8 @@ mod lending_protocol {
                 }
                 prices.insert(res_address, price_in_xrd);
             }
-            let loan_limit_used = user.get_loan_limit_used(&self.ltv_ratios, prices.clone());
+            let loan_limit_used =
+                user.get_loan_limit_used(&self.pool_parameters, &self.ltv_ratios, prices.clone());
 
             if loan_limit_used == Decimal::ZERO {
                 panic!("No borrow from the user");
