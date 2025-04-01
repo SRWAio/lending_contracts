@@ -9,7 +9,7 @@ mod lending_protocol {
 
     extern_blueprint! {
     // import the Pool package from the ledger using its package address
-    "package_tdx_2_1p4klfek3yn86gzzcxtyhqddmzn55jx3tyc0p8h5nj05gac6zuf7fvp",
+    "package_tdx_2_1phyc0v7jt30j98laknzypnw4jqm8celeqv74glrj8lge2n8euvc8nr",
     Pool {
         fn instantiate(
             admin_rule: AccessRule,
@@ -291,7 +291,6 @@ mod lending_protocol {
                 multiplier > base_multiplier,
                 "Multiplier must be greater than Base Multiplier."
             );
-            assert!(base > 0.into(), "Base must be greater then 0.");
             assert!(
                 reserve_factor >= 0.into() && reserve_factor <= 1.into(),
                 "Reserve Factor must be between 0.0 and 1.0."
@@ -328,7 +327,7 @@ mod lending_protocol {
                 withdraw_locked: false,
                 repay_locked: false,
                 pool_reserve: dec!("0.2"),
-                deposit_limit: dec!("10000"),
+                deposit_limit: dec!("100000"),
                 deposit_balance: Decimal::zero(),
                 sd_balance: Decimal::zero(),
                 borrow_balance: Decimal::zero(),
@@ -567,7 +566,9 @@ mod lending_protocol {
             let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
-            let user_deposit_balance = user.get_deposit(resource_address);
+            let user_deposit_balance = user.get_deposit(resource_address)
+                * pool_parameters.deposit_balance
+                / pool_parameters.sd_balance;
             if user_deposit_balance < amount {
                 panic!(
                     "User does not have enough deposit balance to withdraw. Max withdrawal is: {}",
