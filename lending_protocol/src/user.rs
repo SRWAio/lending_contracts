@@ -101,7 +101,7 @@ impl UserData {
         } else {
             new_sb_balance -= amount;
             new_sb_balance /= cost_of_asset_in_terms_of_xrd;
-            self.update_borrow(resource_address.clone(), new_sb_balance);
+            self.update_borrow(resource_address.clone(), new_sb_balance / sb_price);
             interest
         }
     }

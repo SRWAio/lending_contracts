@@ -60,6 +60,8 @@ mod lending_protocol {
             update_balances => restrict_to: [admin];
             update_pool_settings => restrict_to: [admin];
             lock_pool => restrict_to: [admin];
+            add_to_blacklist => restrict_to: [admin];
+            remove_from_blacklist => restrict_to: [admin];
         }
     }
 
@@ -73,10 +75,10 @@ mod lending_protocol {
         admin_signature_check: HashMap<NonFungibleLocalId, bool>,
         admin_badge_id_counter: u64,
         admin_badge_address: ResourceAddress,
-        admin_resource_manager: NonFungibleResourceManager,
         user_resource_manager: NonFungibleResourceManager,
         pool_parameters: KeyValueStore<ResourceAddress, PoolParameters>,
         ltv_ratios: HashMap<ResourceAddress, Decimal>,
+        admin_blacklist: HashSet<NonFungibleLocalId>,
     }
 
     impl LendingProtocol {
@@ -101,8 +103,7 @@ mod lending_protocol {
                 admin_rule.clone(),
                 admin_badge_address_reservation,
             );
-            let admin_resource_manager =
-                NonFungibleResourceManager::from(admin_badges.resource_address());
+
             let user_resource_manager = create_user_resource_manager(
                 protocol_rule.clone(),
                 component_rule.clone(),
@@ -112,7 +113,6 @@ mod lending_protocol {
             Self {
                 protocol_badge: NonFungibleVault::with_bucket(protocol_badge),
                 pools: KeyValueStore::new(),
-                admin_resource_manager,
                 user_resource_manager,
                 admin_rule: admin_rule.clone(),
                 component_rule: component_rule.clone(),
@@ -123,6 +123,7 @@ mod lending_protocol {
                 pool_parameters: KeyValueStore::new(),
                 oracle_address,
                 ltv_ratios: HashMap::new(),
+                admin_blacklist: HashSet::new(),
             }
             .instantiate()
             .prepare_to_globalize(OwnerRole::None)
@@ -171,7 +172,6 @@ mod lending_protocol {
                 protocol_badge: NonFungibleVault::with_bucket(protocol_badge),
                 pools: KeyValueStore::new(),
                 user_resource_manager,
-                admin_resource_manager,
                 admin_rule: admin_rule.clone(),
                 component_rule: component_rule.clone(),
                 admin_signature_check: HashMap::new(),
@@ -181,6 +181,7 @@ mod lending_protocol {
                 pool_parameters: KeyValueStore::new(),
                 oracle_address,
                 ltv_ratios: HashMap::new(),
+                admin_blacklist: HashSet::new(),
             }
             .instantiate()
             .prepare_to_globalize(OwnerRole::None)
@@ -223,7 +224,6 @@ mod lending_protocol {
                 multiplier > base_multiplier,
                 "Multiplier must be greater then Base Multiplier."
             );
-            assert!(base > 0.into(), "Base must be greater then 0.");
             assert!(
                 reserve_factor >= 0.into() && reserve_factor <= 1.into(),
                 "Reserve Factor must be between 0.0 and 1.0."
@@ -256,7 +256,7 @@ mod lending_protocol {
                 withdraw_locked: false,
                 repay_locked: false,
                 pool_reserve: dec!("0.2"),
-                deposit_limit: dec!("10000"),
+                deposit_limit: dec!("100000"),
                 deposit_balance: pool_balances.0,
                 sd_balance: pool_balances.1,
                 borrow_balance: pool_balances.2,
@@ -1127,7 +1127,28 @@ mod lending_protocol {
                 .check(manager.address())
                 .as_non_fungible()
                 .non_fungible_local_id();
+            if self.admin_blacklist.contains(&admin_id) {
+                panic!("Admin is blacklisted!");
+            }
             self.admin_signature_check.insert(admin_id, true);
+        }
+
+        pub fn add_to_blacklist(&mut self, admin_id: NonFungibleLocalId) {
+            let is_approved_by_admins = self.is_approved_by_admins();
+            if is_approved_by_admins == false {
+                panic!("Admin functions must be approved by at least 3 admins")
+            }
+            self.admin_signature_check = HashMap::new();
+            self.admin_blacklist.insert(admin_id);
+        }
+
+        pub fn remove_from_blacklist(&mut self, admin_id: NonFungibleLocalId) {
+            let is_approved_by_admins = self.is_approved_by_admins();
+            if is_approved_by_admins == false {
+                panic!("Admin functions must be approved by at least 3 admins")
+            }
+            self.admin_signature_check = HashMap::new();
+            self.admin_blacklist.remove(&admin_id);
         }
 
         pub fn take_protocol_badge(&mut self) -> NonFungibleBucket {
