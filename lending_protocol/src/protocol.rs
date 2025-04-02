@@ -575,6 +575,17 @@ mod lending_protocol {
                     user_deposit_balance
                 );
             }
+            let mut sb_price = Decimal::ONE;
+            if pool_parameters.sb_balance != Decimal::zero() {
+                sb_price = pool_parameters.borrow_balance / pool_parameters.sb_balance;
+            }
+            let user_borrow = user.get_borrow(resource_address) * sb_price;
+            let max_withdraw =
+                available_liquidity - user_borrow / pool_parameters.max_borrow_percent;
+            if amount > max_withdraw {
+                panic!("Max withdraw amount is {}: ", max_withdraw);
+            }
+
             let total_collateral_and_loan = user.calculate_total_collateral_and_loan(
                 &self.pool_parameters,
                 &self.ltv_ratios,
