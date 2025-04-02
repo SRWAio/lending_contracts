@@ -210,10 +210,11 @@ mod lending_protocol {
             kink: Decimal,
             reserve_factor: Decimal,
             ltv_ratio: Decimal,
+            admin_badge: Proof,
         ) {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
+            let is_admin_authorized = self.is_authorized(admin_badge);
+            if is_admin_authorized == false {
+                panic!("Not authorized")
             }
             assert!(
                 ltv_ratio >= 0.into() && ltv_ratio <= 1.into(),
@@ -277,10 +278,11 @@ mod lending_protocol {
             kink: Decimal,
             reserve_factor: Decimal,
             ltv_ratio: Decimal,
+            admin_badge: Proof,
         ) -> (Global<Pool>, ComponentAddress) {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
+            let is_admin_authorized = self.is_authorized(admin_badge);
+            if is_admin_authorized == false {
+                panic!("Not authorized")
             }
             assert!(
                 ltv_ratio >= 0.into() && ltv_ratio <= 1.into(),
@@ -1093,10 +1095,11 @@ mod lending_protocol {
             &mut self,
             resource_address: ResourceAddress,
             amount: Decimal,
+            admin_badge: Proof,
         ) -> Bucket {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
+            let is_admin_authorized = self.is_authorized(admin_badge);
+            if is_admin_authorized == false {
+                panic!("Not authorized")
             }
             let pool_parameters = self.pool_parameters.get(&resource_address).unwrap().clone();
             let mut reserve_balance = pool_parameters.reserve_balance;
@@ -1138,34 +1141,46 @@ mod lending_protocol {
                 .check(manager.address())
                 .as_non_fungible()
                 .non_fungible_local_id();
+
             if self.admin_blacklist.contains(&admin_id) {
-                panic!("Admin is blacklisted!");
+                panic!("Not authorized!")
             }
             self.admin_signature_check.insert(admin_id, true);
         }
 
-        pub fn add_to_blacklist(&mut self, admin_id: NonFungibleLocalId) {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
+        pub fn add_to_blacklist(&mut self, admin_id: Decimal, admin_badge: Proof) {
+            let is_admin_authorized = self.is_authorized(admin_badge);
+            if is_admin_authorized == false {
+                panic!("Not authorized")
             }
             self.admin_signature_check = HashMap::new();
-            self.admin_blacklist.insert(admin_id);
+            self.admin_signature_check = HashMap::new();
+            let integer_admin_id = admin_id
+                .to_string()
+                .parse::<u64>()
+                .expect("Invalid decimal value");
+            let non_fungible_id = NonFungibleLocalId::Integer(integer_admin_id.into());
+            self.admin_blacklist.insert(non_fungible_id);
         }
 
-        pub fn remove_from_blacklist(&mut self, admin_id: NonFungibleLocalId) {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
+        pub fn remove_from_blacklist(&mut self, admin_id: Decimal, admin_badge: Proof) {
+            let is_admin_authorized = self.is_authorized(admin_badge);
+            if is_admin_authorized == false {
+                panic!("Not authorized")
             }
             self.admin_signature_check = HashMap::new();
-            self.admin_blacklist.remove(&admin_id);
+            let integer_admin_id = admin_id
+                .to_string()
+                .parse::<u64>()
+                .expect("Invalid decimal value");
+            let non_fungible_id = NonFungibleLocalId::Integer(integer_admin_id.into());
+            self.admin_blacklist.remove(&non_fungible_id);
         }
 
-        pub fn take_protocol_badge(&mut self) -> NonFungibleBucket {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
+        pub fn take_protocol_badge(&mut self, admin_badge: Proof) -> NonFungibleBucket {
+            let is_admin_authorized = self.is_authorized(admin_badge);
+            if is_admin_authorized == false {
+                panic!("Not authorized")
             }
             self.admin_signature_check = HashMap::new();
             let protocol_badge = self.protocol_badge.take(1);
@@ -1173,11 +1188,11 @@ mod lending_protocol {
         }
 
         pub fn mint_admin_badge(&mut self, admin_badge: Proof) -> NonFungibleBucket {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
+            let is_admin_authorized = self.is_authorized(admin_badge);
+            if is_admin_authorized == false {
+                panic!("Not authorized")
             }
-            let resource_manager = NonFungibleResourceManager::from(admin_badge.resource_address());
+            let resource_manager = NonFungibleResourceManager::from(self.admin_badge_address);
             let admin_badge_id_counter = self.admin_badge_id_counter;
             let new_id = admin_badge_id_counter + 1;
             let admin_name = "Admin ".to_string() + &new_id.to_string();
@@ -1190,12 +1205,19 @@ mod lending_protocol {
             new_admin_badge
         }
 
-        fn is_approved_by_admins(&mut self) -> bool {
-            let singature_count = self.admin_signature_check.len();
-            if singature_count < 3 {
-                false
+        fn is_authorized(&mut self, admin_badge: Proof) -> bool {
+            let manager = ResourceManager::from(admin_badge.resource_address());
+            let non_fungible_id = admin_badge
+                .check(manager.address())
+                .as_non_fungible()
+                .non_fungible_local_id();
+
+            if self.admin_blacklist.contains(&non_fungible_id)
+                || self.admin_signature_check.len() < 3
+            {
+                return false;
             } else {
-                true
+                return true;
             }
         }
 
@@ -1209,10 +1231,11 @@ mod lending_protocol {
             min_collateral_ratio: Decimal,
             pool_reserve: Decimal,
             pool_deposit_limit: Decimal,
+            admin_badge: Proof,
         ) {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
+            let is_admin_authorized = self.is_authorized(admin_badge);
+            if is_admin_authorized == false {
+                panic!("Not authorized")
             }
             self.pool_parameters
                 .get_mut(&resource_address)
@@ -1239,10 +1262,11 @@ mod lending_protocol {
             kink: Decimal,
             reserve_factor: Decimal,
             ltv_ratio: Decimal,
+            admin_badge: Proof,
         ) {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
+            let is_admin_authorized = self.is_authorized(admin_badge);
+            if is_admin_authorized == false {
+                panic!("Not authorized")
             }
             self.pool_parameters
                 .get_mut(&resource_address)
@@ -1282,10 +1306,11 @@ mod lending_protocol {
             borrow: Decimal,
             sb_balance: Decimal,
             reserve: Decimal,
+            admin_badge: Proof,
         ) {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
+            let is_admin_authorized = self.is_authorized(admin_badge);
+            if is_admin_authorized == false {
+                panic!("Not authorized")
             }
             self.pool_parameters
                 .get_mut(&resource_address)
@@ -1301,10 +1326,11 @@ mod lending_protocol {
             borrow_locked: bool,
             withdraw_locked: bool,
             repay_locked: bool,
+            admin_badge: Proof,
         ) {
-            let is_approved_by_admins = self.is_approved_by_admins();
-            if is_approved_by_admins == false {
-                panic!("Admin functions must be approved by at least 3 admins")
+            let is_admin_authorized = self.is_authorized(admin_badge);
+            if is_admin_authorized == false {
+                panic!("Not authorized")
             }
             self.pool_parameters
                 .get_mut(&resource_address)
