@@ -713,18 +713,18 @@ mod lending_protocol {
                 borrow_amount_in_terms_of_xrd,
                 user_available_collateral
             );
-            let max_borrow;
-            if user_available_collateral
-                < pool_parameters.deposit_balance * pool_parameters.max_borrow_percent
-            {
-                max_borrow = user_available_collateral;
-            } else {
-                let user_borrow = user.get_borrow(asset_address);
-                max_borrow = pool_parameters.max_borrow_percent * pool_parameters.deposit_balance
-                    - user_borrow;
+            let max_borrow_per_pool =
+                pool_parameters.deposit_balance * pool_parameters.max_borrow_percent;
+            let mut sb_price = Decimal::ONE;
+            if pool_parameters.sb_balance != Decimal::zero() {
+                sb_price = pool_parameters.borrow_balance / pool_parameters.sb_balance;
             }
-            if amount > max_borrow {
-                panic!("Max borrow amount is {}: ", max_borrow);
+            let user_borrow = user.get_borrow(asset_address) * sb_price;
+            if amount + user_borrow > max_borrow_per_pool {
+                panic!(
+                    "Max borrow amount is {}: ",
+                    max_borrow_per_pool - user_borrow
+                );
             }
             let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
             let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
