@@ -92,7 +92,8 @@ impl UserData {
         let sb_balance = self.get_borrow(resource_address);
         // Increase borrow balance by interests accrued
         let mut borrow_balance = sb_balance * sb_price;
-        let mut interest = borrow_balance - sb_balance;
+        //TO DO: CALCULATE INTEREST BASED ON TIME ELAPSSED
+        let mut interest = Decimal::ZERO;
         interest *= cost_of_asset_in_terms_of_xrd;
         borrow_balance *= cost_of_asset_in_terms_of_xrd;
         // Repay the loan

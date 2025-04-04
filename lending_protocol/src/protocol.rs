@@ -1022,10 +1022,11 @@ mod lending_protocol {
             let non_fungible_local_ids: IndexSet<NonFungibleLocalId> =
                 self.protocol_badge.non_fungible_local_ids(1);
             let new_total_deposit = deposit_balance - reward - platform_bonus;
-            let new_total_sd_balance = lending_parameters.sd_balance - reward - platform_bonus;
+            let new_total_sd_balance =
+                lending_parameters.sd_balance - (reward - platform_bonus) / sd_price;
             let new_repaid_asset_total_borrow_balance =
                 repaid_asset_total_borrow_balance - decreased_amount;
-            let new_repaid_sb_balance = repaid_asset_total_sb_balance - decreased_amount;
+            let new_repaid_sb_balance = repaid_asset_total_sb_balance - decreased_amount / sb_price;
             let to_return_reward =
                 self.protocol_badge
                     .authorize_with_non_fungibles(&non_fungible_local_ids, || {
