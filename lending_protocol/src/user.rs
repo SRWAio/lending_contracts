@@ -91,17 +91,17 @@ impl UserData {
     ) -> Decimal {
         let sb_balance = self.get_borrow(resource_address);
         // Increase borrow balance by interests accrued
-        let mut new_sb_balance = sb_balance * sb_price;
-        let mut interest = new_sb_balance - sb_balance;
+        let mut borrow_balance = sb_balance * sb_price;
+        let mut interest = borrow_balance - sb_balance;
         interest *= cost_of_asset_in_terms_of_xrd;
-        new_sb_balance *= cost_of_asset_in_terms_of_xrd;
+        borrow_balance *= cost_of_asset_in_terms_of_xrd;
         // Repay the loan
-        if new_sb_balance < amount {
+        if borrow_balance < amount {
             panic!("Amount is greater than borrow balance");
         } else {
-            new_sb_balance -= amount;
-            new_sb_balance /= cost_of_asset_in_terms_of_xrd;
-            self.update_borrow(resource_address.clone(), new_sb_balance / sb_price);
+            borrow_balance -= amount;
+            borrow_balance /= cost_of_asset_in_terms_of_xrd;
+            self.update_borrow(resource_address.clone(), borrow_balance / sb_price);
             interest
         }
     }
@@ -120,6 +120,7 @@ impl UserData {
         prices: HashMap<ResourceAddress, Decimal>,
         available_liquidity: Decimal,
         sb_price: Decimal,
+        sd_price: Decimal,
     ) -> (Decimal, Decimal, Decimal) {
         let cost_of_deposit_asset_in_terms_of_xrd = prices
             .get(&deposit_asset_address)
@@ -139,7 +140,7 @@ impl UserData {
         if amount > available_liquidity_in_terms_of_xrd {
             panic!("Amount is greater than available liquidity");
         }
-        liquidated_user_deposit_balance *= *cost_of_deposit_asset_in_terms_of_xrd;
+        liquidated_user_deposit_balance *= *cost_of_deposit_asset_in_terms_of_xrd * sd_price;
 
         if amount > max_repayment {
             panic!("Amount is greater than max repayment");
@@ -168,7 +169,7 @@ impl UserData {
         platform_bonus /= *cost_of_deposit_asset_in_terms_of_xrd;
         liquidated_user_deposit_balance /= *cost_of_deposit_asset_in_terms_of_xrd;
         let users_new_deposit_balance = liquidated_user_deposit_balance - reward - platform_bonus;
-        self.update_deposit(deposit_asset_address, users_new_deposit_balance);
+        self.update_deposit(deposit_asset_address, users_new_deposit_balance / sd_price);
         let mut decreased_amount = amount - interest;
         decreased_amount /= *cost_of_repaid_asset_in_terms_of_xrd;
         (reward, platform_bonus, decreased_amount)

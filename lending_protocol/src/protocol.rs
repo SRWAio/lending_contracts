@@ -982,6 +982,7 @@ mod lending_protocol {
                 repaid_asset_total_borrow_balance,
                 repaid_asset_total_sb_balance,
             );
+            let sd_price = calculate_token_price(deposit_balance, lending_parameters.sd_balance);
             // Do the liquidation calculations and update the liquidated users state
             let to_return_amounts = user.on_liquidate(
                 repaid.amount(),
@@ -996,6 +997,7 @@ mod lending_protocol {
                 prices,
                 available_liquidity,
                 sb_price,
+                sd_price,
             );
 
             let reward = to_return_amounts.0;
