@@ -138,7 +138,7 @@ impl UserData {
         // Calculate the max repayment amount that's going to be used to repay users debt
         let max_repayment = max_liquidation_percent * borrow_amount;
         amount *= *cost_of_repaid_asset_in_terms_of_xrd;
-        if amount > available_liquidity_in_terms_of_xrd {
+        if amount > available_liquidity_in_terms_of_xrd * (1 + liquidation_bonus) {
             panic!("Amount is greater than available liquidity");
         }
         liquidated_user_deposit_balance *= *cost_of_deposit_asset_in_terms_of_xrd * sd_price;
