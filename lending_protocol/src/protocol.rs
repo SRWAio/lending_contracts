@@ -542,10 +542,15 @@ mod lending_protocol {
             if withdraw_locked {
                 panic!("Withdrawing is locked for now!");
             }
+            let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
+            let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
+            let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
+            let mut sd_balance = pool_parameters.sd_balance;
+
             let available_liquidity = self.available_liquidity(
-                pool_parameters.deposit_balance,
-                pool_parameters.borrow_balance,
-                pool_parameters.reserve_balance,
+                asset_total_deposit_balance,
+                asset_total_borrow_balance,
+                asset_total_reserve_balance,
                 pool_parameters.pool_reserve,
             );
             if available_liquidity < amount {
@@ -568,9 +573,8 @@ mod lending_protocol {
             let mut user: UserData = self
                 .user_resource_manager
                 .get_non_fungible_data(&non_fungible_id);
-            let user_deposit_balance = user.get_deposit(resource_address)
-                * pool_parameters.deposit_balance
-                / pool_parameters.sd_balance;
+            let user_deposit_balance =
+                user.get_deposit(resource_address) * asset_total_deposit_balance / sd_balance;
             if user_deposit_balance < amount {
                 panic!(
                     "User does not have enough deposit balance to withdraw. Max withdrawal is: {}",
@@ -579,11 +583,11 @@ mod lending_protocol {
             }
             let mut sb_price = Decimal::ONE;
             if pool_parameters.sb_balance != Decimal::zero() {
-                sb_price = pool_parameters.borrow_balance / pool_parameters.sb_balance;
+                sb_price = asset_total_borrow_balance / pool_parameters.sb_balance;
             }
             let user_borrow = user.get_borrow(resource_address) * sb_price;
             let max_withdraw =
-                available_liquidity - user_borrow / pool_parameters.max_borrow_percent;
+                asset_total_deposit_balance - user_borrow / pool_parameters.max_borrow_percent;
             if amount > max_withdraw {
                 panic!("Max withdraw amount is {}: ", max_withdraw);
             }
@@ -602,10 +606,6 @@ mod lending_protocol {
             if amount > withdrawable_amount {
                 panic!("Max withdrawal amount is {}: ", withdrawable_amount);
             }
-            let mut asset_total_deposit_balance = pool_parameters.deposit_balance;
-            let mut asset_total_borrow_balance = pool_parameters.borrow_balance;
-            let mut asset_total_reserve_balance = pool_parameters.reserve_balance;
-            let mut sd_balance = pool_parameters.sd_balance;
 
             let utilisation =
                 get_utilisation(asset_total_deposit_balance, asset_total_borrow_balance);
